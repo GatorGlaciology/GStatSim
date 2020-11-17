@@ -7,11 +7,11 @@ Geostatistical tools and demos for ice sheet analysis
 
 
 # Dependencies
-Numpy
-Pandas
-Math
-Scipy
-Matplotlib
-GeostatsPy
+* Numpy
+* Pandas
+* Math
+* Scipy
+* Matplotlib
+* GeostatsPy
 
 These can all be installed using the command *pip install (package name).*
