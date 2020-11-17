@@ -12,6 +12,8 @@ Geostatistical tools and demos for ice sheet analysis
 * Math
 * Scipy
 * Matplotlib
+* tqdm
+* Sklearn
 * GeostatsPy
 
 These can all be installed using the command *pip install (package name).*
