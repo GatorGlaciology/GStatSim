@@ -14,4 +14,4 @@ Scipy
 Matplotlib
 GeostatsPy
 
-These can all be installed using the command pip install (package name).
+These can all be installed using the command *pip install (package name).*
