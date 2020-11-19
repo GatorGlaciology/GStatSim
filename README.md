@@ -41,6 +41,7 @@ The functions are in the GlacierStats.py document. Just download the GlacierStat
 * Sklearn
 * earthpy
 * GeostatsPy
+* random
 
 These can all be installed using the command *pip install (package name)*
 
