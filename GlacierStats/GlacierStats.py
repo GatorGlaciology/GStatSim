@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[12]:
+# In[25]:
 
 
 ### geostatistical tools
 # Mickey MacKie
 
 
-# In[1]:
+# In[23]:
 
 
 import numpy as np
@@ -19,9 +19,10 @@ from sklearn.neighbors import KDTree
 import math
 from scipy.spatial import distance_matrix
 from tqdm import tqdm
+import random
 
 
-# In[2]:
+# In[24]:
 
 
 # covariance function definition
@@ -144,7 +145,7 @@ def cov(h1, h2, k, vario):
 
 
 # simple kriging
-def krige(Pred_grid, df, xx, yy, data, k, vario):
+def skrige(Pred_grid, df, xx, yy, data, k, vario):
     
     Mean_1 = np.average(df[data]) # mean of data
     Var_1 = np.var(df[data]); # variance of data 
@@ -156,8 +157,9 @@ def krige(Pred_grid, df, xx, yy, data, k, vario):
     est_SK = np.zeros(shape=len(Pred_grid))
     var_SK = np.zeros(shape=len(Pred_grid))
     
+    # preallocate space for data
     X_Y = np.zeros((1, k, 2))
-    closematrix_Primary = np.zeros((1, k))
+    closematrix_Primary = np.zeros((1, k)) 
     neardistmatrix = np.zeros((1, k))
     
     for z in tqdm(range(0, len(Pred_grid))):
@@ -187,6 +189,125 @@ def krige(Pred_grid, df, xx, yy, data, k, vario):
         var_SK[z] = Var_1 - np.sum(k_weights*r)
         
     return est_SK, var_SK
+
+
+
+# ordinary kriging
+def okrige(Pred_grid, df, xx, yy, data, k, vario):
+    
+    Var_1 = np.var(df[data]); # variance of data 
+    
+    # make KDTree to search data for nearest neighbors
+    tree_data = KDTree(df[[xx,yy]].values) 
+    
+    # preallocate space for mean and variance
+    est_OK = np.zeros(shape=len(Pred_grid))
+    var_OK = np.zeros(shape=len(Pred_grid))
+    
+    # preallocate space for data
+    X_Y = np.zeros((1, k, 2))
+    closematrix_Primary = np.zeros((1, k))
+    neardistmatrix = np.zeros((1, k))
+    
+    for z in tqdm(range(0, len(Pred_grid))):
+        # find nearest data points
+        nearest_dist, nearest_ind = tree_data.query(Pred_grid[z : z + 1, :], k=k)
+        a = nearest_ind.ravel()
+        group = df.iloc[a, :]
+        closematrix_Primary[:] = group[data]
+        neardistmatrix[:] = nearest_dist
+        X_Y[:, :] = group[[xx, yy]]
+        
+        # left hand side (covariance between data)
+        Kriging_Matrix = np.zeros(shape=((k+1, k+1)))
+        Kriging_Matrix[0:k,0:k] = cov(X_Y[0], X_Y[0], 0, vario)
+        Kriging_Matrix[k,0:k] = 1
+        Kriging_Matrix[0:k,k] = 1
+        
+        # Set up Right Hand Side (covariance between data and unknown)
+        r = np.zeros(shape=(k+1))
+        k_weights = r
+        r[0:k] = cov(X_Y[0], np.tile(Pred_grid[z], (k, 1)), 1, vario)
+        r[k] = 1 # unbiasedness constraint
+        Kriging_Matrix.reshape(((k+1)), ((k+1)))
+        
+        # Calculate Kriging Weights
+        k_weights = np.dot(np.linalg.pinv(Kriging_Matrix), r)
+
+        # get estimates
+        est_OK[z] = np.sum(k_weights[0:k]*closematrix_Primary[:])
+        var_OK[z] = Var_1 - np.sum(k_weights[0:k]*r[0:k])
+        
+    return est_OK, var_OK
+
+
+
+
+# sequential Gaussian simulation
+def sgsim(Pred_grid, df, xx, yy, data, k, vario):
+    
+    # generate random array for simulation order
+    xyindex = np.arange(len(Pred_grid))
+    random.shuffle(xyindex)
+
+    Var_1 = np.var(df[data]); # variance of data 
+    
+    # preallocate space for simulation
+    sgs = np.zeros(shape=len(Pred_grid))
+    
+    # preallocate space for data
+    X_Y = np.zeros((1, k, 2))
+    closematrix_Primary = np.zeros((1, k))
+    neardistmatrix = np.zeros((1, k))
+    
+    with tqdm(total=len(Pred_grid), position=0, leave=True) as pbar:
+        for i in tqdm(range(0, len(Pred_grid)), position=0, leave=True):
+            pbar.update()
+            z = xyindex[i]
+            
+            # make KDTree to search data for nearest neighbors
+            tree_data = KDTree(df[[xx,yy]].values) 
+    
+            # find nearest data points
+            nearest_dist, nearest_ind = tree_data.query(Pred_grid[z : z + 1, :], k=k)
+            a = nearest_ind.ravel()
+            group = df.iloc[a, :]
+            closematrix_Primary[:] = group[data]
+            neardistmatrix[:] = nearest_dist
+            X_Y[:, :] = group[[xx, yy]]
+        
+            # left hand side (covariance between data)
+            Kriging_Matrix = np.zeros(shape=((k+1, k+1)))
+            Kriging_Matrix[0:k,0:k] = cov(X_Y[0], X_Y[0], 0, vario)
+            Kriging_Matrix[k,0:k] = 1
+            Kriging_Matrix[0:k,k] = 1
+        
+            # Set up Right Hand Side (covariance between data and unknown)
+            r = np.zeros(shape=(k+1))
+            k_weights = r
+            r[0:k] = cov(X_Y[0], np.tile(Pred_grid[z], (k, 1)), 1, vario)
+            r[k] = 1 # unbiasedness constraint
+            Kriging_Matrix.reshape(((k+1)), ((k+1)))
+        
+            # Calculate Kriging Weights
+            k_weights = np.dot(np.linalg.pinv(Kriging_Matrix), r)
+
+            # get estimates
+            est = np.sum(k_weights[0:k]*closematrix_Primary[:]) # kriging mean
+            var = Var_1 - np.sum(k_weights[0:k]*r[0:k]) # kriging variance
+        
+            if (var < 0): # make sure variances are non-negative
+                var = 0 
+        
+            sgs[z] = np.random.normal(est,math.sqrt(var),1) # simulate by randomly sampling a value
+        
+            # update the conditioning data
+            coords = Pred_grid[z:z+1,:]
+            dnew = {xx: [coords[0,0]], yy: [coords[0,1]], data: [sgs[z]]} 
+            dfnew = pd.DataFrame(data = dnew)
+            df = pd.concat([df,dfnew], sort=False) # add new points by concatenating dataframes 
+        
+    return sgs
 
 
 # In[ ]:
