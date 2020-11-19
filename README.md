@@ -22,7 +22,7 @@ We have created tutorials that are designed to provide an intuitive understandin
 * **Variogram_model.ipynb** - A tutorial on fitting a variogram model to an experimental variogram.
 * **Outlier_removal.ipynb** - Outlier removal to minimize artifacts from measurement crossover errors.
 * **Kriging.ipynb** - Demonstration of simple kriging and ordinary kriging interpolation with commentary on glaciology-specific considerations.
-* **Sequential_Gaussian_simulation** - An introduction to stochastic simulation of subglacial topography.
+* **Sequential_Gaussian_simulation.ipynb** - An introduction to stochastic simulation of subglacial topography.
 
 
 # The author
