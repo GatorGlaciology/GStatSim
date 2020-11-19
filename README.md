@@ -42,7 +42,7 @@ The functions are in the GlacierStats.py document. Just download the GlacierStat
 * earthpy
 * GeostatsPy
 
-These can all be installed using the command *pip install (package name).*
+These can all be installed using the command *pip install (package name)*
 
 # Datasets
 
