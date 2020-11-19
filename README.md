@@ -5,6 +5,25 @@ In its current state, the demos focus on the geostatistical simulation of subgla
 
 We will continuously develop new tools and tutorials to address specific technical challenges in glaciology. Do you have feedback or suggestions? Specific things that we should account for? Feel free to contact me at mackie3@stanford.edu. Our goal is to create tools that are useful and accessible, so we welcome your thoughts and insight.
 
+# Features
+
+## Functions
+Some of the tools in GlacierStats:
+
+* **axis_var** - Obtain the variogram for the major or minor axis
+* **skrige** - Simple kriging
+* **okrige** - Ordinary kriging
+* **sgsim** - Sequential Gaussian simulation
+
+## Demos
+We have created tutorials that are designed to provide an intuitive understanding of geostatistical methods and to demonstrate how these methods can be used for ice sheet analysis. The current demos are:
+
+* **Experimental_Variogram.ipynb** - Demonstration of experimental variogram calculation to quantify spatial relationships.
+* **Variogram_model.ipynb** - A tutorial on fitting a variogram model to an experimental variogram.
+* **Outlier_removal.ipynb** - Outlier removal to minimize artifacts from measurement crossover errors.
+* **Kriging.ipynb** - Demonstration of simple kriging and ordinary kriging interpolation with commentary on glaciology-specific considerations.
+* **Sequential_Gaussian_simulation** - An introduction to stochastic simulation of subglacial topography.
+
 
 # The author
 (Emma) Mickey MacKie is a PhD candidate in Geophysics at Stanford.
