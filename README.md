@@ -26,7 +26,7 @@ We have created tutorials that are designed to provide an intuitive understandin
 
 
 # The author
-(Emma) Mickey MacKie is a PhD candidate in Geophysics at Stanford.
+(Emma) Mickey MacKie is an assistant professor at the University of Florida.
 
 # Useage
 The functions are in the GlacierStats.py document. Just download the GlacierStats folder and make sure the GlacierStats.py script is in your working directory. The datasets for the demos are in the Data folder.
