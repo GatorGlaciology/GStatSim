@@ -3,7 +3,7 @@ GlacierStats is a collection of functions and demos specifically designed for st
 
 In its current state, the demos focus on the geostatistical simulation of subglacial topography. However, these protocols could be applied to a number topics in glaciology, or remote sensing problems in general.
 
-We will continuously develop new tools and tutorials to address specific technical challenges in glaciology. Do you have feedback or suggestions? Specific things that we should account for? Feel free to contact me at mackie3@stanford.edu. Our goal is to create tools that are useful and accessible, so we welcome your thoughts and insight.
+We will continuously develop new tools and tutorials to address specific technical challenges in glaciology. Do you have feedback or suggestions? Specific things that we should account for? Feel free to contact me at emackie@ufl.edu. Our goal is to create tools that are useful and accessible, so we welcome your thoughts and insight.
 
 # Features
 
