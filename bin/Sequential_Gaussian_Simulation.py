@@ -43,23 +43,10 @@ def main(data_path):
     df_bed = df_bed[lof >= -1.3]
 
 
-    # In[3]:
 
-
-    # plot data
-    im = plt.scatter(df_bed['X'],df_bed['Y'], c = df_bed['Bed'], vmin = -700, vmax = 800, marker=".", s = 0.5)       # scatter plot for location map
-    plt.title('Bed Data')                                    # add plot title
-    plt.xlabel('X (m)'); plt.ylabel('Y (m)')                          # set axis labels
-    cbar = plt.colorbar(im, orientation="vertical", ticks=np.linspace(-700, 800, 10)) # add vertical color bar
-    cbar.set_label("Bed (m)", rotation=270, labelpad=20)      # add labels to the color bar
-    plt.subplots_adjust(left=0.0, bottom=0.0, right=1.0, top=1.0) # adjust the plot size
-    plt.axis('scaled')
-    plt.show
 
 
     # ## Convert to standard Gaussian distribution
-
-    # In[4]:
 
 
     df_bed['Nbed'], tvbed, tnsbed = geostats.nscore(df_bed,'Bed')  # normal score transformation
@@ -69,7 +56,6 @@ def main(data_path):
     # 
     # These are the variogram model parameters we determined in Variogram_model.ipynb:
 
-    # In[5]:
 
 
     Azimuth = 22.5 # azimuthal direction of major axis
@@ -86,8 +72,6 @@ def main(data_path):
     # ## Sequential Gaussian simulation
     # 
     # First we need to define a grid to interpolate:
-
-    # In[6]:
 
 
     # define coordinate grid
@@ -112,23 +96,8 @@ def main(data_path):
     sgs = gs.sgsim(Pred_grid_xy, df_samp, 'X', 'Y', 'Nbed', k, vario, rad) # simulate
 
 
-    # In[9]:
-
-
-    # plot results
-    im = plt.scatter(Pred_grid_xy[:,0], Pred_grid_xy[:,1], c = sgs, vmin = -3, vmax = 3, marker=".", s = 15)       # scatter plot for location map
-    plt.title('Normal Score SGSim')                                    # add plot title
-    plt.xlabel('X (m)'); plt.ylabel('Y (m)')                          # set axis labels
-    cbar = plt.colorbar(im, orientation="vertical", ticks=np.linspace(-3, 3, 10)) # add vertical color bar
-    cbar.set_label("Normalized bed", rotation=270, labelpad=20)      # add labels to the color bar
-    plt.subplots_adjust(left=0.0, bottom=0.0, right=1.0, top=1.0) # adjust the plot size
-    plt.axis('scaled')
-    plt.show()
-
 
     # Reverse normal score transformation
-
-    # In[10]:
 
 
     # create dataframe for back transform function
@@ -148,35 +117,11 @@ def main(data_path):
     sgs_trans = geostats.backtr(df_sgs,'sgs',vr,vrg,zmin,zmax,ltail,ltpar,utail,utpar)
 
 
-    # Let's plot a hillshade version so we can appreciate the topographic textures
-
-    # In[11]:
-
-
-    # make hillshade plot
 
     # reshape grid
     ylen = (ymax - ymin)/pix
     xlen = (xmax - xmin)/pix
     elevation = np.reshape(sgs_trans, (int(ylen), int(xlen)))
-
-    hillshade = es.hillshade(elevation, azimuth = 210, altitude = 10) # hillshade
-
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ep.plot_bands(
-        elevation,
-        ax=ax,
-        cmap="viridis",
-        title="Simulation with hillshade",
-    )
-    ax.imshow(hillshade, cmap="Greys", alpha=0.1)
-    plt.show()
-
-
-    # Awesome! We've created a geologically realistic digital elevation model. Let's imagine we wanted to generate multiple realizations for some kind of Bayesian analysis. To do that, we would generate simulations in a for loop, where on each iteration, we would randomly downsample a different subset of the data:
-
-    # In[12]:
-
 
     # multiple realizations
         
@@ -192,40 +137,6 @@ def main(data_path):
         sgs_mult[i,:] = gs.sgsim(Pred_grid_xy, df_samp, 'X', 'Y', 'Nbed', k, vario, rad) # simulate
 
 
-    # In[13]:
-
-
-    # plot realizations
-
-    plt.subplot(121) 
-    im = plt.scatter(Pred_grid_xy[:,0],Pred_grid_xy[:,1], c = sgs_mult[0,:], vmin = -3, vmax = 3, marker=".", s = 15)       # scatter plot for location map
-    plt.title('Realization 1')                                    # add plot title
-    plt.xlabel('X (m)'); plt.ylabel('Y (m)')                          # set axis labels
-    cbar = plt.colorbar(im, orientation="vertical", ticks=np.linspace(-3, 3, 10)) # add vertical color bar
-    cbar.set_label("Normalized bed", rotation=270, labelpad=20)      # add labels to the color bar
-    plt.subplots_adjust(left=0.0, bottom=0.0, right=1.0, top=1.0) # adjust the plot size
-    plt.axis('scaled')
-
-    plt.subplot(122) 
-    im = plt.scatter(Pred_grid_xy[:,0],Pred_grid_xy[:,1], c = sgs_mult[1,:], vmin = -3, vmax = 3, marker=".", s = 15)       # scatter plot for location map
-    plt.title('Realization 2')                                    # add plot title
-    plt.xlabel('X (m)'); plt.ylabel('Y (m)')                          # set axis labels
-    cbar = plt.colorbar(im, orientation="vertical", ticks=np.linspace(-3, 3, 10)) # add vertical color bar
-    cbar.set_label("Normalized Bed", rotation=270, labelpad=20)      # add labels to the color bar
-    plt.subplots_adjust(left=0.0, bottom=0.0, right=1.0, top=1.0) # adjust the plot size
-    plt.axis('scaled')
-
-    plt.subplots_adjust(left=0.0, bottom=0.0, right=2.0, top=1.0, wspace=0.2, hspace=0.3)
-    plt.show()
-
-
-    # In[ ]:
-
-
-
-
-
-    # In[ ]:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
