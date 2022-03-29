@@ -28,7 +28,7 @@ setup(
     author_email="emackie@ufl.edu",
     packages=find_packages(where='GlacierStats'),
     version='0.1',
-    #scripts=['bin/Sequential_Gaussian_Simulation.py'],
+    scripts=['bin/Sequential_Gaussian_Simulation.py'],
     install_requires=install_requires,
     classifiers=[
         "Programming Language :: Python :: 3",
