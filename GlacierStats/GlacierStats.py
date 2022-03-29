@@ -23,6 +23,10 @@ import random
 
 # In[4]:
 
+def helloworld():
+    print("hello world")
+
+
 
 # convert lat,lon to polar stereographic (Greenland)
 def ll2xy_north(lat,lon):
