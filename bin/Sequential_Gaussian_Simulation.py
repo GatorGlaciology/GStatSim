@@ -75,8 +75,10 @@ def main(data_path):
 
 
     # define coordinate grid
-    xmin = 420000; xmax = 480000              # range of x values
-    ymin = -1090000; ymax = -1030000     # range of y values
+    #xmin = 420000; xmax = 480000              # range of x values
+    #ymin = -1090000; ymax = -1030000     # range of y values
+    xmin = df_bed['X'].min(); xmax = df_bed['X'].max()            # range of x values
+    ymin = df_bed['Y'].min(); ymax = df_bed['Y'].max()     # range of y values
     pix = 500  # pixel resolution
     Pred_grid_xy = gs.pred_grid(xmin, xmax, ymin, ymax, pix)
 

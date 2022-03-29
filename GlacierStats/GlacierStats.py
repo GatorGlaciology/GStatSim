@@ -27,86 +27,6 @@ def helloworld():
     print("hello world")
 
 
-
-# convert lat,lon to polar stereographic (Greenland)
-def ll2xy_north(lat,lon):
-    phi_c = 70   # standard parallel - this is different from Andy Bliss' function, which uses -70! 
-    a = 6378137.0 # radius of ellipsoid, WGS84
-    e = 0.08181919 # eccentricity, WGS84
-    lambda_0 = -45  # meridian along positive Y axis
-
-    # convert to radians
-    phi = (lat * math.pi)/180
-    phi_c = (phi_c * math.pi)/180
-    lambd = (lon * math.pi)/180
-    lambda_0 = (lambda_0 * math.pi)/180
-
-    # transformation
-    t1 = np.tan(math.pi/4 - phi/2)
-    t2 = 1 - e * np.sin(phi)
-    t3 = 1 + e * np.sin(phi)
-    t4 = np.power(t3,e/2)
-    t = np.divide(np.divide(t1,t2),t4)
-
-    tc1 = np.tan(math.pi/4 - phi_c/2)
-    tc2 = 1 - e * np.sin(phi_c)
-    tc3 = 1 + e * np.sin(phi_c)
-    tc4 = np.power(tc3,e/2)
-    tc = np.divide(np.divide(tc1,tc2),tc4)
-
-    m1 = np.cos(phi_c)
-    m2 = np.power(np.sin(phi_c),2)
-    m3 = 1 - (np.power(e,2) * m2)
-    m4 = np.sqrt(m3)
-    mc = np.divide(m1,m4)
-
-    rho = a * mc * t / tc
-
-    x = rho*np.sin(lambd - lambda_0)
-    y = -rho*np.cos(lambd - lambda_0)
-    
-    return x, y
-
-# convert lat,lon to polar stereographic (Antarctica)
-def ll2xy_south(lat,lon):
-    phi_c = -71   # standard parallel - this is different from Andy Bliss' function, which uses -70! 
-    a = 6378137.0 # radius of ellipsoid, WGS84
-    e = 0.08181919 # eccentricity, WGS84
-    lambda_0 = 0  # meridian along positive Y axis
-
-    # convert to radians
-    lat = (lat * math.pi)/180
-    phi_c = (phi_c * math.pi)/180
-    lon = (lon * math.pi)/180
-    lambda_0 = (lambda_0 * math.pi)/180
-
-    # transformation
-    t1 = np.tan(math.pi/4 + lat/2)
-    t2 = 1 - e * np.sin(-lat)
-    t3 = 1 + e * np.sin(-lat)
-    t4 = np.power(t3,e/2)
-    t = np.divide(np.divide(t1,t2),t4)
-
-    tc1 = np.tan(math.pi/4 + phi_c/2)
-    tc2 = 1 - e * np.sin(-phi_c)
-    tc3 = 1 + e * np.sin(-phi_c)
-    tc4 = np.power(tc3,e/2)
-    tc = np.divide(np.divide(tc1,tc2),tc4)
-
-    m1 = np.cos(-phi_c)
-    m2 = np.power(np.sin(-phi_c),2)
-    m3 = 1 - (np.power(e,2) * m2)
-    m4 = np.sqrt(m3)
-    mc = np.divide(m1,m4)
-
-    rho = a * mc * t / tc
-
-    x = -rho*np.sin(-lon + lambda_0)
-    y = rho*np.cos(-lon + lambda_0)
-    
-    return x, y
-
-
 # covariance function definition
 def covar(t, d, r):
     h = d / r
@@ -209,7 +129,7 @@ def axis_var(lagh, nug, nstruct, cc, vtype, a):
 
 # make array of x,y coordinates based on corners and resolution
 def pred_grid(xmin, xmax, ymin, ymax, pix):
-    cols = (xmax - xmin)/pix; rows = (ymax - ymin)/pix  # number of rows and columns
+    cols = np.rint((xmax - xmin)/pix); rows = np.rint((ymax - ymin)/pix)  # number of rows and columns
     x = np.arange(xmin,xmax,pix); y = np.arange(ymin,ymax,pix) # make arrays
 
     xx, yy = np.meshgrid(x,y) # make grid
