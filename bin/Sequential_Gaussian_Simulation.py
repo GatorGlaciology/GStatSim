@@ -10,6 +10,8 @@
 
 
 # load dependencies
+import cupy as cp
+import cudf
 import argparse
 import numpy as np
 import pandas as pd
@@ -34,7 +36,8 @@ def main(data_path):
     # In[2]:
 
 
-    df_bed = pd.read_csv(data_path) # download data
+    df_bed_gpu = cudf.read_csv(data_path) # download data
+    df_bed = df_bed_gpu.to_pandas() # cpu version
     #../Data/Nioghalvfjerds_bed_data.csv
     # remove outliers with LOF method
     clf = LocalOutlierFactor(n_neighbors = 5, contamination = 0.05)
@@ -42,7 +45,7 @@ def main(data_path):
     lof = clf.negative_outlier_factor_
     df_bed = df_bed[lof >= -1.3]
 
-
+    df_bed_gpu = df_bed_gpu[lof >= -1.3]
 
 
 
@@ -50,8 +53,9 @@ def main(data_path):
 
 
     df_bed['Nbed'], tvbed, tnsbed = geostats.nscore(df_bed,'Bed')  # normal score transformation
+    df_bed_gpu['Nbed'] = df_bed['Nbed']
 
-
+    print('running on gpu')
     # ## Set variogram parameters
     # 
     # These are the variogram model parameters we determined in Variogram_model.ipynb:
@@ -77,8 +81,8 @@ def main(data_path):
     # define coordinate grid
     #xmin = 420000; xmax = 480000              # range of x values
     #ymin = -1090000; ymax = -1030000     # range of y values
-    xmin = df_bed['X'].min(); xmax = df_bed['X'].max()            # range of x values
-    ymin = df_bed['Y'].min(); ymax = df_bed['Y'].max()     # range of y values
+    xmin = df_bed_gpu['X'].min(); xmax = df_bed_gpu['X'].max()            # range of x values
+    ymin = df_bed_gpu['Y'].min(); ymax = df_bed_gpu['Y'].max()     # range of y values
     pix = 500  # pixel resolution
     Pred_grid_xy = gs.pred_grid(xmin, xmax, ymin, ymax, pix)
 
@@ -88,21 +92,22 @@ def main(data_path):
 
     # randomly downsample data to 10% of the original size
     df_samp = df_bed.sample(frac=0.10, replace=False, random_state=1)
-
+    df_samp_gpu = df_bed_gpu.sample(frac=0.10, replace=False, random_state=1)
 
     # In[8]:
 
 
     k = 50 # number of neighboring data points used to estimate a given point 
     rad = 10000 # 10 km search radius
-    sgs = gs.sgsim(Pred_grid_xy, df_samp, 'X', 'Y', 'Nbed', k, vario, rad) # simulate
+    sgs = gs.sgsim(Pred_grid_xy, df_samp_gpu, 'X', 'Y', 'Nbed', k, vario, rad) # simulate
 
-
+    print(type(sgs))
 
     # Reverse normal score transformation
 
 
     # create dataframe for back transform function
+    sgs = cp.asnumpy(sgs)
     df_sgs = pd.DataFrame(sgs, columns = ['sgs'])
 
     # transformation parameters
@@ -117,26 +122,28 @@ def main(data_path):
 
     # transformation
     sgs_trans = geostats.backtr(df_sgs,'sgs',vr,vrg,zmin,zmax,ltail,ltpar,utail,utpar)
-
+    print(sgs_trans)
 
 
     # reshape grid
     ylen = (ymax - ymin)/pix
     xlen = (xmax - xmin)/pix
     elevation = np.reshape(sgs_trans, (int(ylen), int(xlen)))
+    
 
     # multiple realizations
         
     num_sim = 2 # number of realizations
-    sgs_mult = np.zeros((num_sim, len(Pred_grid_xy))) # preallocate space for simulations
-
+    #sgs_mult = np.zeros((num_sim, len(Pred_grid_xy))) # preallocate space for simulations
+    sgs_mult = []
+    
     # let it rip
     for i in range(0, num_sim):
 
     # randomly downsample data to 10% of the original size
-        df_samp = df_bed.sample(frac=0.10, replace=False, random_state=i) # random_state is optional (this is the seed)
+        df_samp_gpu = df_bed_gpu.sample(frac=0.10, replace=False, random_state=i) # random_state is optional (this is the seed)
     
-        sgs_mult[i,:] = gs.sgsim(Pred_grid_xy, df_samp, 'X', 'Y', 'Nbed', k, vario, rad) # simulate
+        sgs_mult.append(gs.sgsim(Pred_grid_xy, df_samp_gpu, 'X', 'Y', 'Nbed', k, vario, rad)) # simulate
 
 
 
