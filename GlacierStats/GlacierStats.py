@@ -9,6 +9,7 @@
 
 # In[3]:
 
+import nvtx
 import cupy as cp
 import cudf
 from cuml.metrics import pairwise_distances
@@ -29,6 +30,7 @@ def helloworld():
     print("hello world")
 
 
+@nvtx.annotate("covar()", color="purple")
 # covariance function definition
 def covar(t, d, r):
     h = d / r
@@ -41,6 +43,8 @@ def covar(t, d, r):
         c = cp.exp(-3 * cp.square(h))
     return c
 
+
+@nvtx.annotate("sortQuadrantPoints()", color="red")
 def sortQuadrantPoints(quad_array, quad_count, rad):
     quad_array['Dist'] = cp.linalg.norm(quad_array[["X","Y"]].values, axis = 1)
     quad_array = quad_array[quad_array.Dist < rad] # delete points outside of radius
@@ -48,7 +52,8 @@ def sortQuadrantPoints(quad_array, quad_count, rad):
     # select the number of points in each quadrant up to our quadrant count
     smallest = quad_array.iloc[:quad_count]
     return smallest
-    
+ 
+@nvtx.annotate("nearestNeighborSearch()", color="blue")
 def nearestNeighborSearch(rad, count, loc, data):
     locx = loc[0]
     locy = loc[1]
@@ -114,6 +119,7 @@ def axis_var(lagh, nug, nstruct, cc, vtype, a):
 
 
 # make array of x,y coordinates based on corners and resolution
+@nvtx.annotate("pred_grid()", color="green")
 def pred_grid(xmin, xmax, ymin, ymax, pix):
     cols = np.rint((xmax - xmin)/pix); rows = np.rint((ymax - ymin)/pix)  # number of rows and columns
     x = np.arange(xmin,xmax,pix); y = np.arange(ymin,ymax,pix) # make arrays
@@ -131,6 +137,7 @@ def pred_grid(xmin, xmax, ymin, ymax, pix):
 
 
 # rotation matrix (Azimuth = major axis direction)
+@nvtx.annotate("Rot_Mat()", color="purple")
 def Rot_Mat(Azimuth, a_max, a_min):
     theta = (Azimuth / 180.0) * cp.pi
     Rot_Mat = cp.dot(
@@ -147,6 +154,7 @@ def Rot_Mat(Azimuth, a_max, a_min):
 
 
 # covariance model
+@nvtx.annotate("krig_cov()", color="red")
 def krig_cov(q, vario):
     # unpack variogram parameters
     Azimuth = vario[0]
@@ -169,6 +177,7 @@ def krig_cov(q, vario):
     return c
 
 # covariance model
+@nvtx.annotate("array_cov()", color="red")
 def array_cov(q1, q2, vario):
     # unpack variogram parameters
     Azimuth = vario[0]
@@ -362,6 +371,7 @@ def okrige(Pred_grid, df, xx, yy, data, k, vario, rad):
 
 
 # sequential Gaussian simulation
+@nvtx.annotate("sgsim()", color="blue")
 def sgsim(Pred_grid, df, xx, yy, data, k, vario, rad):
 
     """Sequential Gaussian simulation
@@ -385,8 +395,8 @@ def sgsim(Pred_grid, df, xx, yy, data, k, vario, rad):
     # preallocate space for simulation
     sgs = cp.zeros(shape=len(Pred_grid))
     
-    for i in tqdm(range(0, len(Pred_grid)), position=0, leave=True):
-    #for i in tqdm(range(0, 100), position=0, leave=True):
+    #for i in tqdm(range(0, len(Pred_grid)), position=0, leave=True):
+    for i in tqdm(range(0, 100), position=0, leave=True):
         z = xyindex[i]
 
         # convert data to numpy array for faster speeds/parsing
