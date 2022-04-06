@@ -30,6 +30,8 @@ pool = rmm.mr.PoolMemoryResource(
     maximum_pool_size=2**32)
 rmm.mr.set_current_device_resource(pool)
 cp.cuda.set_allocator(rmm.rmm_cupy_allocator)
+import dask_cudf
+
     
 
 
@@ -96,6 +98,7 @@ def sortQuadrantPoints(quad_array, quad_count, rad):
 def center(arrayx,arrayy,centerx,centery):
     centerx = arrayx - centerx
     centery = arrayy - centery
+    #centered_array = cp.array([centerx.compute(), centery.compute()])
     centered_array = cp.array([centerx, centery])
     return centered_array
 
@@ -122,7 +125,7 @@ def nearestNeighborSearch(rad, count, loc, data2):
     
     data = data2.copy()
     centered_array = center(data.X.values,data.Y.values,locx,locy) # center data 
-
+    print(type(centered_array))
     data["dist"] = distance_calculator(centered_array) # compute distance from grid cell of interest
     data["angles"] = angle_calculator(centered_array)
     data = data[data.dist < rad] # delete points outside of radius
@@ -135,7 +138,6 @@ def nearestNeighborSearch(rad, count, loc, data2):
     
     
     smallest = cp.ones(shape=(count,3))*cp.nan
-    
     cuda_streams = [cp.cuda.stream.Stream(non_blocking=True) for _ in range(8)]
     for i, stream in enumerate(cuda_streams):
         with nvtx.annotate("get octants", color="purple"):
