@@ -37,7 +37,7 @@ def main(data_path):
     # In[2]:
     with nvtx.annotate("load data", color="purple"):
     
-        df_bed_gpu = cudf.read_csv(data_path) # download data
+        df_bed_gpu = cudf.read_csv(data_path,dtype = cp.float32) # download data
     
     
     df_bed = df_bed_gpu.to_pandas() # cpu version
@@ -55,9 +55,17 @@ def main(data_path):
     # ## Convert to standard Gaussian distribution
 
 
-    df_bed['Nbed'], tvbed, tnsbed = geostats.nscore(df_bed,'Bed')  # normal score transformation
-    with nvtx.annotate("cpu to gpu Nbed", color="purple"):
-        df_bed_gpu['Nbed'] = df_bed['Nbed']
+    #df_bed['Nbed'], tvbed, tnsbed = geostats.nscore(df_bed,'Bed')  # normal score transformation
+    df_bed_gpu["Nbed"] = gs.nscore(df_bed_gpu["Bed"].values)
+    #print(df_bed_gpu["Nbed"], df_bed["Nbed"])
+    
+    #fig, ax= plt.subplots(ncols=2, sharex=True)
+    #ax[0].hist(df_bed["Nbed"])
+    #ax[1].hist(cp.asnumpy(df_bed_gpu["Nbed"].values))
+    #fig.savefig("nbed_histograms.png")
+    
+    #with nvtx.annotate("cpu to gpu Nbed", color="purple"):
+        #df_bed_gpu['Nbed'] = df_bed['Nbed']
 
     print('running on gpu')
     # ## Set variogram parameters
@@ -102,9 +110,13 @@ def main(data_path):
 
 
     k = 50 # number of neighboring data points used to estimate a given point 
-    rad = 10000 # 10 km search radius
+    rad = 20000 # 10 km search radius
     sgs = gs.sgsim(Pred_grid_xy, df_samp_gpu, 'X', 'Y', 'Nbed', k, vario, rad) # simulate
 
+    fig, ax= plt.subplots()
+    ax.scatter(Pred_grid_xy[:,0],Pred_grid_xy[:,1],c = cp.asnumpy(sgs), vmin = -2, vmax = 2, marker=".", s = 50)
+    fig.savefig("sgs_test.png")
+    
     exit(0) # end program
     print(type(sgs))
 

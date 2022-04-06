@@ -22,12 +22,50 @@ import math
 from scipy.spatial import distance_matrix
 from tqdm import tqdm
 import random
+from cupyx.scipy.special import erfinv
+import rmm
+pool = rmm.mr.PoolMemoryResource(
+    rmm.mr.CudaMemoryResource(),
+    initial_pool_size=2**30,
+    maximum_pool_size=2**32)
+rmm.mr.set_current_device_resource(pool)
+cp.cuda.set_allocator(rmm.rmm_cupy_allocator)
+    
 
 
-# In[4]:
+#This function adapted from https://developer.nvidia.com/blog/gauss-rank-transformation-is-100x-faster-with-rapids-and-cupy/
+def nscore(gpu_array):
+    r_array = gpu_array.argsort().argsort()
+    r_array = (r_array/r_array.max()-0.5)*2 # scale to (-1,1)
+    epsilon = 1e-6
+    r_array = cp.clip(r_array,-1+epsilon,1-epsilon)
+    
+    normal_array = erfinv(r_array)
+    
+    return normal_array
+    
+def backtr(gpu_array):
+    def linear_interpolate(df,x,pos):
+        N = df.shape[0]
+        pos[pos>=N] = N-1
+        pos[pos-1<=0] = 0
 
-def helloworld():
-    print("hello world")
+        x1 = df['tgt'].values[pos]
+        x2 = df['tgt'].values[pos-1]
+        y1 = df['src'].values[pos]
+        y2 = df['src'].values[pos-1]
+
+        relative = (x-x2)  / (x1-x2)
+        return (1-relative)*y2 + relative*y1
+    
+    df_gpu = cudf.DataFrame({'src': gpu_array,'tgt': r_array})
+    df_gpu = df_gpu.sort_values('src')
+
+    pos_gpu = df_gpu['tgt'].searchsorted(r_array, side='left')
+    
+    x_inv_gpu = linear_interpolate(df_gpu, r_array, pos_gpu)
+    
+    return x_inv_gpu
 
 
 @nvtx.annotate("covar()", color="purple")
@@ -52,40 +90,65 @@ def sortQuadrantPoints(quad_array, quad_count, rad):
     # select the number of points in each quadrant up to our quadrant count
     smallest = quad_array.iloc[:quad_count]
     return smallest
+
+@nvtx.annotate("center()", color="orange")
+# center data points around grid cell of interest
+def center(arrayx,arrayy,centerx,centery):
+    centerx = arrayx - centerx
+    centery = arrayy - centery
+    centered_array = cp.array([centerx, centery])
+    return centered_array
+
+@nvtx.annotate("distance_calculator()", color="orange")
+# calculate distance between array and center coordinates
+def distance_calculator(centered_array):
+    dist = cp.linalg.norm(centered_array, axis=0)
+    #print(dist)
+    return dist
+
+@nvtx.annotate("angle_calculator()", color="orange")
+# calculate angle between array and center coordinates
+def angle_calculator(centered_array):
+    angles = cp.arctan2(centered_array[0],centered_array[1])
+    #print(angles)
+    return angles
+
  
 @nvtx.annotate("nearestNeighborSearch()", color="blue")
-def nearestNeighborSearch(rad, count, loc, data):
+def nearestNeighborSearch(rad, count, loc, data2):
+    device = cp.cuda.Device()
     locx = loc[0]
     locy = loc[1]
     
-    # wipe coords for re-usability 
-    #coords = np.empty_like(data)
-    coords = data.copy()
-    #coords[:] = data
-    # standardize our quadrants (create the origin at our location point)
-    coords.X -= locx
-    coords.Y -= locy
+    data = data2.copy()
+    centered_array = center(data.X.values,data.Y.values,locx,locy) # center data 
+
+    data["dist"] = distance_calculator(centered_array) # compute distance from grid cell of interest
+    data["angles"] = angle_calculator(centered_array)
+    data = data[data.dist < rad] # delete points outside of radius
+    data = data.sort_values('dist',ascending = True) # sort array by distances
+    bins = [-math.pi, -3*math.pi/4, -math.pi/2, -math.pi/4, 0, math.pi/4, math.pi/2, 3*math.pi/4, math.pi] # break into 8 octants
+    data["Oct"] = cudf.cut(data.angles, bins = bins, labels = list(range(8))) # octant search
+   
+    # Number of points to look for in each octant, if not fully divisible by 8, round down
+    oct_count = count//8
     
-    # Number of points to look for in each quadrant, if not fully divisible by 4, round down
-    quad_count = count//4
     
-    # sort coords of dataset into 4 quadrants relative to input location
-    final_quad = []
-    final_quad.append(coords[(coords.X >= 0) & (coords.Y >= 0)])
-    final_quad.append(coords[(coords.X < 0) & (coords.Y < 0)])
-    final_quad.append(coords[(coords.X >= 0) & (coords.Y < 0)])
-    final_quad.append(coords[(coords.X < 0) & (coords.Y >= 0)])
+    smallest = cp.ones(shape=(count,3))*cp.nan
     
-    # Gather distance values for each coord from point and delete points outside radius
-    fcoord = []
-    for quad in final_quad:
-        fcoord.append(sortQuadrantPoints(quad, quad_count, rad))
+    cuda_streams = [cp.cuda.stream.Stream(non_blocking=True) for _ in range(8)]
+    for i, stream in enumerate(cuda_streams):
+        with nvtx.annotate("get octants", color="purple"):
+            with stream: 
+                octant = data[data.Oct == i].iloc[:oct_count][["X","Y","Nbed"]].values # get smallest distance points for each octant
+                
+            for j, row in enumerate(octant):
+                smallest[i*oct_count+j,:] = row # concatenate octants
+                            
     
-    # add all quadrants back together for final dataset
-    near = cudf.concat(fcoord)
-    # unstandardize data back to original form
-    near.X += locx
-    near.Y += locy
+    device.synchronize()
+    near = smallest[~cp.isnan(smallest)].reshape(-1,3) # remove nans
+    
     return near
 
 
@@ -405,42 +468,45 @@ def sgsim(Pred_grid, df, xx, yy, data, k, vario, rad):
         nearest = nearestNeighborSearch(rad, k, Pred_grid[z], df)
 
         # store X,Y pair values in new array
-        xy_val = nearest[["X","Y"]]
+        xy_val = nearest[:,:-1] # get x and y values out of nearest neighbors
+        Nz = nearest[:,-1] # get z column
 
         # update K to reflect the amount of K values we got back from quadrant search
         new_k = nearest.shape[0]
 
-
         # left hand side (covariance between data)
         Kriging_Matrix = cp.zeros(shape=((new_k+1, new_k+1)))
-        Kriging_Matrix[0:new_k,0:new_k] = krig_cov(xy_val.values, vario)
+        Kriging_Matrix[0:new_k,0:new_k] = krig_cov(xy_val, vario)
         Kriging_Matrix[new_k,0:new_k] = 1
         Kriging_Matrix[0:new_k,new_k] = 1
 
         # Set up Right Hand Side (covariance between data and unknown)
         r = cp.zeros(shape=(new_k+1))
         k_weights = r
-        r[0:new_k] = array_cov(xy_val.values, cp.tile(Pred_grid[z], new_k), vario) # covariance between simulation grid cell and conditioning data. cp.tile repeats simulation grid cell coordinate entries for covariance calculation
+        r[0:new_k] = array_cov(xy_val, cp.tile(Pred_grid[z], new_k), vario) # covariance between simulation grid cell and conditioning data. cp.tile repeats simulation grid cell coordinate entries for covariance calculation
         r[new_k] = 1 # unbiasedness constraint
-        Kriging_Matrix.reshape(((new_k+1)), ((new_k+1)))
+        
+        with nvtx.annotate("matrix operations", color="blue"):
+            Kriging_Matrix.reshape(((new_k+1)), ((new_k+1)))
         
         # Calculate Kriging Weights
-        k_weights = cp.dot(cp.linalg.pinv(Kriging_Matrix), r) # lambda = C^-1 * c
+            k_weights = cp.dot(cp.linalg.pinv(Kriging_Matrix), r) # lambda = C^-1 * c
 
         # get estimates
-        est = cp.sum(k_weights[0:new_k]*nearest.Nbed.values) # kriging mean
-        var = Var_1 - cp.sum(k_weights[0:new_k]*r[0:new_k]) # kriging variance
+            est = cp.sum(k_weights[0:new_k]*Nz) # kriging mean
+            var = cp.sum(k_weights[0:new_k]*r[0:new_k]) - Var_1 # kriging variance
+            #print(var)
         
-        if (var < 0): # make sure variances are non-negative
-            var = 0 
+            if (var < 0): # make sure variances are non-negative
+                var = 0 
             
         #print(est.shape,var.shape)
+            sgs[z] = cp.random.normal(est,cp.sqrt(var),1) # simulate by randomly sampling a value
 
-        sgs[z] = cp.random.normal(est,cp.sqrt(var),1) # simulate by randomly sampling a value
-
+        with nvtx.annotate("concatenate dataframe", color="blue"):
         # update the conditioning data
-        coords = Pred_grid[z:z+1,:]
-        df = cudf.concat([df,cudf.DataFrame({"X": [coords[0,0]], "Y": [coords[0,1]], "Nbed": [sgs[z]], "Bed": cp.nan})], sort=False) # add new points by concatenating dataframes 
+            coords = Pred_grid[z:z+1,:]
+            df = cudf.concat([df,cudf.DataFrame({"X": [coords[0,0]], "Y": [coords[0,1]], "Nbed": [sgs[z]], "Bed": cp.nan})], sort=False) # add new points by concatenating dataframes 
         
     return sgs
 
