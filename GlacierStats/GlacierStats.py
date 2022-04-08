@@ -26,14 +26,13 @@ from cupyx.scipy.special import erfinv
 import rmm
 pool = rmm.mr.PoolMemoryResource(
     rmm.mr.CudaMemoryResource(),
-    initial_pool_size=2**30,
+    initial_pool_size=2**28,
     maximum_pool_size=2**32)
 rmm.mr.set_current_device_resource(pool)
 cp.cuda.set_allocator(rmm.rmm_cupy_allocator)
-import dask_cudf
 
-    
-
+from concurrent.futures import ThreadPoolExecutor
+executor = ThreadPoolExecutor(max_workers=8)
 
 #This function adapted from https://developer.nvidia.com/blog/gauss-rank-transformation-is-100x-faster-with-rapids-and-cupy/
 def nscore(gpu_array):
@@ -106,50 +105,52 @@ def center(arrayx,arrayy,centerx,centery):
 # calculate distance between array and center coordinates
 def distance_calculator(centered_array):
     dist = cp.linalg.norm(centered_array, axis=0)
-    #print(dist)
     return dist
 
 @nvtx.annotate("angle_calculator()", color="orange")
 # calculate angle between array and center coordinates
 def angle_calculator(centered_array):
     angles = cp.arctan2(centered_array[0],centered_array[1])
-    #print(angles)
     return angles
 
+@nvtx.annotate("get octants", color="purple")
+def get_octatnt( d, oct_num, oct_count):
+    x = d[d.Oct == oct_num][["X","Y","Nbed"]].iloc[:oct_count].values
+    return x
  
 @nvtx.annotate("nearestNeighborSearch()", color="blue")
 def nearestNeighborSearch(rad, count, loc, data2):
-    device = cp.cuda.Device()
     locx = loc[0]
     locy = loc[1]
     
     data = data2.copy()
     centered_array = center(data.X.values,data.Y.values,locx,locy) # center data 
-    print(type(centered_array))
     data["dist"] = distance_calculator(centered_array) # compute distance from grid cell of interest
     data["angles"] = angle_calculator(centered_array)
     data = data[data.dist < rad] # delete points outside of radius
     data = data.sort_values('dist',ascending = True) # sort array by distances
+    
     bins = [-math.pi, -3*math.pi/4, -math.pi/2, -math.pi/4, 0, math.pi/4, math.pi/2, 3*math.pi/4, math.pi] # break into 8 octants
     data["Oct"] = cudf.cut(data.angles, bins = bins, labels = list(range(8))) # octant search
    
     # Number of points to look for in each octant, if not fully divisible by 8, round down
     oct_count = count//8
     
-    
     smallest = cp.ones(shape=(count,3))*cp.nan
-    cuda_streams = [cp.cuda.stream.Stream(non_blocking=True) for _ in range(8)]
-    for i, stream in enumerate(cuda_streams):
-        with nvtx.annotate("get octants", color="purple"):
-            with stream: 
-                octant = data[data.Oct == i].iloc[:oct_count][["X","Y","Nbed"]].values # get smallest distance points for each octant
-                
-            for j, row in enumerate(octant):
+    data_oct = []
+    compute_streams = [cp.cuda.stream.Stream(non_blocking=True, ptds=True) for _ in range(8)]
+    for i in range(8):
+        data_oct.append(executor.submit(get_octatnt, data, i, oct_count)) # get smallest distance points for each octant
+
+    with nvtx.annotate("get results", color="yellow"):
+        [stream.synchronize() for stream in compute_streams]
+        data_oct = [d.result() for d in data_oct]
+        for j, arry in enumerate(data_oct):
+            for i, row in enumerate(arry):
                 smallest[i*oct_count+j,:] = row # concatenate octants
-                            
-    
-    device.synchronize()
-    near = smallest[~cp.isnan(smallest)].reshape(-1,3) # remove nans
+
+    with nvtx.annotate("near", color="yellow"):
+        near = smallest[~cp.isnan(smallest)].reshape(-1,3) # remove nans
     
     return near
 
@@ -437,7 +438,7 @@ def okrige(Pred_grid, df, xx, yy, data, k, vario, rad):
 
 # sequential Gaussian simulation
 @nvtx.annotate("sgsim()", color="blue")
-def sgsim(Pred_grid, df, xx, yy, data, k, vario, rad):
+def sgsim(Pred_grid, df, xx, yy, data, k, vario, rad, iterations=None):
 
     """Sequential Gaussian simulation
     :param Pred_grid: x,y coordinate numpy array of prediction grid
@@ -449,10 +450,10 @@ def sgsim(Pred_grid, df, xx, yy, data, k, vario, rad):
     :vario: variogram parameters describing the spatial statistics
     """
     
-    #print('right version')
+    iterations = len(Pred_grid) if iterations is None else iterations
     
     # generate random array for simulation order
-    xyindex = np.arange(len(Pred_grid))
+    xyindex = np.arange(iterations)
     random.Random(0).shuffle(xyindex) # random.shuffle(xyindex)
 
     Var_1 = cp.var(df[data].values); # variance of data 
@@ -460,8 +461,7 @@ def sgsim(Pred_grid, df, xx, yy, data, k, vario, rad):
     # preallocate space for simulation
     sgs = cp.zeros(shape=len(Pred_grid))
     
-    #for i in tqdm(range(0, len(Pred_grid)), position=0, leave=True):
-    for i in tqdm(range(0, 100), position=0, leave=True):
+    for i in tqdm(range(iterations), position=0, leave=True):
         z = xyindex[i]
 
         # convert data to numpy array for faster speeds/parsing
@@ -491,19 +491,18 @@ def sgsim(Pred_grid, df, xx, yy, data, k, vario, rad):
         with nvtx.annotate("matrix operations", color="blue"):
             Kriging_Matrix.reshape(((new_k+1)), ((new_k+1)))
         
-        # Calculate Kriging Weights
+            # Calculate Kriging Weights
             k_weights = cp.dot(cp.linalg.pinv(Kriging_Matrix), r) # lambda = C^-1 * c
 
-        # get estimates
+            # get estimates
             est = cp.sum(k_weights[0:new_k]*Nz) # kriging mean
             var = cp.sum(k_weights[0:new_k]*r[0:new_k]) - Var_1 # kriging variance
             #print(var)
         
             if (var < 0): # make sure variances are non-negative
                 var = 0 
-            
-        #print(est.shape,var.shape)
-            sgs[z] = cp.random.normal(est,cp.sqrt(var),1) # simulate by randomly sampling a value
+
+            sgs[z] = cp.random.normal(est, cp.sqrt(var),1)[0] # simulate by randomly sampling a value
 
         with nvtx.annotate("concatenate dataframe", color="blue"):
         # update the conditioning data
