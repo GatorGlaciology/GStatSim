@@ -137,6 +137,25 @@ def sortQuadrantPoints(quad_array, q, quad_count, rad, loc):
     smallest = np.delete(smallest, 2, 1)
     return smallest
     
+
+# center data points around grid cell of interest
+def center(arrayx, arrayy, centerx, centery):
+    centerx = arrayx - centerx
+    centery = arrayy - centery
+    centered_array = np.array([centerx, centery])
+    return centered_array
+
+# calculate distance between array and center coordinates
+def distance_calculator(centered_array):
+    dist = np.linalg.norm(centered_array, axis=0)
+    return dist
+
+# calculate angle between array and center coordinates
+def angle_calculator(centered_array):
+    angles = np.arctan2(centered_array[0], centered_array[1])
+    return angles
+
+
 def nearestNeighborSearch(rad, count, loc, data):
     locx = loc[0]
     locy = loc[1]
@@ -171,6 +190,34 @@ def nearestNeighborSearch(rad, count, loc, data):
     # unstandardize data back to original form
     near[:,0] += locx
     near[:,1] += locy
+    return near
+
+def nearestNeighborSearch2(rad, count, loc, data2):
+    locx = loc[0]
+    locy = loc[1]
+    
+    # wipe coords for re-usability
+
+    data = data2.copy()
+    centered_array = center(data.X.values, data.Y.values, locx, locy)
+    data["dist"] = distance_calculator(centered_array) # compute distance from grid cell of interest
+    data["angles"] = angle_calculator(centered_array)
+    data = data[data.dist < rad] # delete points outside radius
+    data = data.sort_values('dist', ascending = True) # sort array by distances
+    bins = [-math.pi, -3*math.pi/4, -math.pi/2, -math.pi/4, 0, math.pi/4, math.pi/2, 3*math.pi/4, math.pi] # break into 8 octants
+    data["Oct"] = pd.cut(data.angles, bins = bins, labels = list(range(8))) # octant search
+    # number of points to look for in each octant, if not fully divisible by 8, round down
+    oct_count = count // 8
+    
+    smallest = np.ones(shape=(count, 3)) * np.nan
+
+    for i in range(8):
+        octant = data[data.Oct == i].iloc[:oct_count][["X","Y","Nbed"]].values # get smallest distance points for each octant
+        for j, row in enumerate(octant):
+            smallest[i*oct_count+j,:] = row # concatenate octants
+
+    near = smallest[~np.isnan(smallest)].reshape(-1,3) # remove nans
+
     return near
 
 
@@ -404,7 +451,7 @@ def okrige(Pred_grid, df, xx, yy, data, k, vario, rad):
 
 
 # sequential Gaussian simulation
-def sgsim(Pred_grid, df, xx, yy, data, k, vario, rad):
+def sgsim2(Pred_grid, df, xx, yy, data, k, vario, rad):
 
     """Sequential Gaussian simulation
     :param Pred_grid: x,y coordinate numpy array of prediction grid
@@ -434,7 +481,7 @@ def sgsim(Pred_grid, df, xx, yy, data, k, vario, rad):
             # convert data to numpy array for faster speeds/parsing
             npdata = df[['X','Y','Nbed']].to_numpy()
             # gather nearby points
-            nearest = nearestNeighborSearch(rad, k, Pred_grid[z], npdata)
+            nearest = nearestNeighborSearch2(rad, k, Pred_grid[z], df[['X','Y','Nbed']])
                
             # store bed elevation values in new array
             norm_bed_val = nearest[:,-1]
