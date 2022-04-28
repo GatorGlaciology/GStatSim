@@ -27,9 +27,9 @@ import GlacierStats as gs
 import earthpy as et
 import earthpy.spatial as es
 import earthpy.plot as ep
-import dask_cudf
 
-def main(data_path):
+
+def main(data_path, iterations):
 
 
 
@@ -94,8 +94,10 @@ def main(data_path):
     # define coordinate grid
     #xmin = 420000; xmax = 480000              # range of x values
     #ymin = -1090000; ymax = -1030000     # range of y values
-    xmin = df_bed_gpu['X'].min(); xmax = df_bed_gpu['X'].max()            # range of x values
-    ymin = df_bed_gpu['Y'].min(); ymax = df_bed_gpu['Y'].max()     # range of y values
+    xmin = df_bed_gpu['X'].min() 
+    xmax = df_bed_gpu['X'].max()            # range of x values
+    ymin = df_bed_gpu['Y'].min() 
+    ymax = df_bed_gpu['Y'].max()     # range of y values
     pix = 500  # pixel resolution
     Pred_grid_xy = gs.pred_grid(xmin, xmax, ymin, ymax, pix)
 
@@ -113,7 +115,7 @@ def main(data_path):
     k = 50 # number of neighboring data points used to estimate a given point 
     rad = 20000 # 10 km search radius
     #df_samp_gpu = dask_cudf.from_cudf(df_samp_gpu, npartitions = 8)
-    sgs = gs.sgsim(Pred_grid_xy, df_samp_gpu, 'X', 'Y', 'Nbed', k, vario, rad) # simulate
+    sgs = gs.sgsim(Pred_grid_xy, df_samp_gpu, 'X', 'Y', 'Nbed', k, vario, rad, iterations) # simulate
 
     fig, ax= plt.subplots()
     ax.scatter(Pred_grid_xy[:,0],Pred_grid_xy[:,1],c = cp.asnumpy(sgs), vmin = -2, vmax = 2, marker=".", s = 50)
@@ -171,8 +173,10 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--datapath", type=str,
         help="File name for csv.",
         default="../Data/Nioghalvfjerds_bed_data.csv")
+    parser.add_argument("-i", "--iterations", type=int, 
+        help="Number of iterations", default=None)
     args = parser.parse_args()
 
     print(args.datapath)
-    main(data_path = args.datapath)
+    main(data_path = args.datapath, iterations = args.iterations)
 
