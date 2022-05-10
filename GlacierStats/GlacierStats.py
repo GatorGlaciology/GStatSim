@@ -14,93 +14,157 @@ import numpy as np
 import numpy.linalg as linalg
 import pandas as pd
 import sklearn as sklearn
-from sklearn.neighbors import KDTree
 import math
 from scipy.spatial import distance_matrix
 from tqdm import tqdm
 import random
+from sklearn.metrics import pairwise_distances
 
 
-# In[4]:
+############################
 
+# Grid data
 
-# convert lat,lon to polar stereographic (Greenland)
-def ll2xy_north(lat,lon):
-    phi_c = 70   # standard parallel - this is different from Andy Bliss' function, which uses -70! 
-    a = 6378137.0 # radius of ellipsoid, WGS84
-    e = 0.08181919 # eccentricity, WGS84
-    lambda_0 = -45  # meridian along positive Y axis
+############################
 
-    # convert to radians
-    phi = (lat * math.pi)/180
-    phi_c = (phi_c * math.pi)/180
-    lambd = (lon * math.pi)/180
-    lambda_0 = (lambda_0 * math.pi)/180
+# make array of x,y coordinates based on corners and resolution. This is the grid of values for simulation
+def pred_grid(xmin, xmax, ymin, ymax, pix):
+    cols = np.rint((xmax - xmin)/pix); rows = np.rint((ymax - ymin)/pix)  # number of rows and columns
+    x = np.arange(xmin,xmax,pix); y = np.arange(ymin,ymax,pix) # make arrays
 
-    # transformation
-    t1 = np.tan(math.pi/4 - phi/2)
-    t2 = 1 - e * np.sin(phi)
-    t3 = 1 + e * np.sin(phi)
-    t4 = np.power(t3,e/2)
-    t = np.divide(np.divide(t1,t2),t4)
+    xx, yy = np.meshgrid(x,y) # make grid
+    yy = np.flip(yy) # flip upside down
 
-    tc1 = np.tan(math.pi/4 - phi_c/2)
-    tc2 = 1 - e * np.sin(phi_c)
-    tc3 = 1 + e * np.sin(phi_c)
-    tc4 = np.power(tc3,e/2)
-    tc = np.divide(np.divide(tc1,tc2),tc4)
+    # shape into array
+    x = np.reshape(xx, (int(rows)*int(cols), 1))
+    y = np.reshape(yy, (int(rows)*int(cols), 1))
 
-    m1 = np.cos(phi_c)
-    m2 = np.power(np.sin(phi_c),2)
-    m3 = 1 - (np.power(e,2) * m2)
-    m4 = np.sqrt(m3)
-    mc = np.divide(m1,m4)
-
-    rho = a * mc * t / tc
-
-    x = rho*np.sin(lambd - lambda_0)
-    y = -rho*np.cos(lambd - lambda_0)
+    Pred_grid_xy = np.concatenate((x,y), axis = 1) # combine coordinates
+    return Pred_grid_xy
     
-    return x, y
-
-# convert lat,lon to polar stereographic (Antarctica)
-def ll2xy_south(lat,lon):
-    phi_c = -71   # standard parallel - this is different from Andy Bliss' function, which uses -70! 
-    a = 6378137.0 # radius of ellipsoid, WGS84
-    e = 0.08181919 # eccentricity, WGS84
-    lambda_0 = 0  # meridian along positive Y axis
-
-    # convert to radians
-    lat = (lat * math.pi)/180
-    phi_c = (phi_c * math.pi)/180
-    lon = (lon * math.pi)/180
-    lambda_0 = (lambda_0 * math.pi)/180
-
-    # transformation
-    t1 = np.tan(math.pi/4 + lat/2)
-    t2 = 1 - e * np.sin(-lat)
-    t3 = 1 + e * np.sin(-lat)
-    t4 = np.power(t3,e/2)
-    t = np.divide(np.divide(t1,t2),t4)
-
-    tc1 = np.tan(math.pi/4 + phi_c/2)
-    tc2 = 1 - e * np.sin(-phi_c)
-    tc3 = 1 + e * np.sin(-phi_c)
-    tc4 = np.power(tc3,e/2)
-    tc = np.divide(np.divide(tc1,tc2),tc4)
-
-    m1 = np.cos(-phi_c)
-    m2 = np.power(np.sin(-phi_c),2)
-    m3 = 1 - (np.power(e,2) * m2)
-    m4 = np.sqrt(m3)
-    mc = np.divide(m1,m4)
-
-    rho = a * mc * t / tc
-
-    x = -rho*np.sin(-lon + lambda_0)
-    y = rho*np.cos(-lon + lambda_0)
     
-    return x, y
+# generate coordinates for output of gridded data  
+def make_grid(xmin, xmax, ymin, ymax, res):
+    cols = np.rint((xmax - xmin)/res); rows = np.rint((ymax - ymin)/res)  # number of rows and columns
+    rows = rows.astype(int)
+    cols = cols.astype(int)
+    x = np.arange(xmin,xmax,res); y = np.arange(ymin,ymax,res) # make arrays
+    xx, yy = np.meshgrid(x,y) # make grid
+
+    # shape into array
+    x = np.reshape(xx, (int(rows)*int(cols), 1))
+    y = np.reshape(yy, (int(rows)*int(cols), 1))
+
+    Pred_grid_xy = np.concatenate((x,y), axis = 1) # combine coordinates
+    return Pred_grid_xy, cols, rows
+
+
+# grid data by averaging the values within each grid cell
+def grid_data(df, xx, yy, zz, res):
+    
+    df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"})
+    
+    xmin = df['X'].min()
+    xmax = df['X'].max()
+    ymin = df['Y'].min()
+    ymax = df['Y'].max()
+    grid_coord, cols, rows = make_grid(xmin, xmax, ymin, ymax, res) # make array of grid coordinates
+    
+    df = df[['X','Y','Z']] # remove any unwanted columns
+    np_data = df.to_numpy() # convert to numpy
+    np_resize = np.copy(np_data) # copy data
+    
+    origin = np.array([xmin,ymin])
+    resolution = np.array([res,res])
+    np_resize[:,:2] = np.rint((np_resize[:,:2]-origin)/resolution) # shift and re-scale the data by subtracting origin and dividing by resolution
+    
+    grid_sum = np.zeros((rows,cols))
+    grid_count = np.copy(grid_sum) # make counter array
+
+    for i in range(np_data.shape[0]):
+        xindex = np.int32(np_resize[i,1])
+        yindex = np.int32(np_resize[i,0])
+        
+        if ((xindex >= rows) | (yindex >= cols)):
+            continue
+            
+        grid_sum[xindex,yindex] = np_data[i,2] + grid_sum[xindex,yindex]
+        grid_count[xindex,yindex] = 1 + grid_count[xindex,yindex] # add counter
+        
+    
+    np.seterr(invalid='ignore') # ignore erros when dividing by zero (will assign NaN value)
+    grid_matrix = np.divide(grid_sum, grid_count) # divide sum by counter to get average within each grid cell
+    
+    grid_array = np.reshape(grid_matrix,[rows*cols]) # reshape to array
+    grid_sum = np.reshape(grid_sum,[rows*cols]) # reshape to array
+    grid_count = np.reshape(grid_count,[rows*cols]) # reshape to array
+    
+    # make dataframe    
+    grid_total = np.array([grid_coord[:,0], grid_coord[:,1], grid_sum, grid_count, grid_array])    
+    df_grid = pd.DataFrame(grid_total.T, columns = ['X', 'Y', 'Sum', 'Count', 'Z'])  # make dataframe of simulated data
+        
+    return df_grid, grid_matrix, rows, cols
+
+
+
+
+# make prediction grid for NaN values in gridded data
+
+    
+####################################
+
+# Nearest neighbor octant search
+
+####################################
+
+# center data points around grid cell of interest
+def center(arrayx, arrayy, centerx, centery):
+    centerx = arrayx - centerx
+    centery = arrayy - centery
+    centered_array = np.array([centerx, centery])
+    return centered_array
+
+# calculate distance between array and center coordinates
+def distance_calculator(centered_array):
+    dist = np.linalg.norm(centered_array, axis=0)
+    return dist
+
+# calculate angle between array and center coordinates
+def angle_calculator(centered_array):
+    angles = np.arctan2(centered_array[0], centered_array[1])
+    return angles
+
+
+def nearestNeighborSearch(rad, count, loc, data2):
+    locx = loc[0]
+    locy = loc[1]
+    
+    # wipe coords for re-usability
+
+    data = data2.copy()
+    centered_array = center(data['X'].values, data['Y'].values, locx, locy)
+    data["dist"] = distance_calculator(centered_array) # compute distance from grid cell of interest
+    data["angles"] = angle_calculator(centered_array)
+    data = data[data.dist < rad] # delete points outside radius
+    data = data.sort_values('dist', ascending = True) # sort array by distances
+    bins = [-math.pi, -3*math.pi/4, -math.pi/2, -math.pi/4, 0, math.pi/4, math.pi/2, 3*math.pi/4, math.pi] # break into 8 octants
+    data["Oct"] = pd.cut(data.angles, bins = bins, labels = list(range(8))) # octant search
+    # number of points to look for in each octant, if not fully divisible by 8, round down
+    oct_count = count // 8
+    
+    smallest = np.ones(shape=(count, 3)) * np.nan
+
+    for i in range(8):
+        octant = data[data.Oct == i].iloc[:oct_count][['X','Y','Z']].values # get smallest distance points for each octant
+        for j, row in enumerate(octant):
+            smallest[i*oct_count+j,:] = row # concatenate octants
+
+    near = smallest[~np.isnan(smallest)].reshape(-1,3) # remove nans
+
+    return near
+
+
+
 
 
 # covariance function definition
@@ -115,65 +179,14 @@ def covar(t, d, r):
         c = np.exp(-3 * np.square(h))
     return c
 
-def formatQuadrant(q, loc):
-    # calculate distances of points from location
-    dist = np.linalg.norm(q - loc, axis=1)
-    # transpose vector to add it to our data matrix
-    dist = dist.reshape(len(dist),1)
-    return np.append(q,dist,axis=1)
-
-def sortQuadrantPoints(quad_array, q, quad_count, rad, loc):
-    quad = quad_array[q][:,[0,1]]
-    np.asarray(quad)
-    quad = formatQuadrant(quad, loc)
-    quad = np.insert(quad, 3, quad_array[q][:,-1], axis=1)
-    # sort array by smallest distance values
-    quad = quad[np.argsort(quad[:,2])]
-    # select the number of points in each quadrant up to our quadrant count
-    smallest = quad[:quad_count]
-    # delete points outside of our radius
-    smallest = np.delete(smallest, np.where((smallest[:,2] > rad))[0], 0)
-    # delete extra column of distance from origin data
-    smallest = np.delete(smallest, 2, 1)
-    return smallest
-    
-def nearestNeighborSearch(rad, count, loc, data):
-    locx = loc[0]
-    locy = loc[1]
-    
-    # wipe coords for re-usability 
-    coords = np.empty_like(data)
-    coords[:] = data
-    # standardize our quadrants (create the origin at our location point)
-    coords[:,0] -= locx
-    coords[:,1] -= locy
-    
-    # Number of points to look for in each quadrant, if not fully divisible by 4, round down
-    quad_count = count//4
-    
-    # sort coords of dataset into 4 quadrants relative to input location
-    final_quad = []
-    final_quad.append(coords[(coords[:, 0] >= 0) & (coords[:,1] >= 0)])
-    final_quad.append(coords[(coords[:, 0] < 0) & (coords[:,1] < 0)])
-    final_quad.append(coords[(coords[:, 0] >= 0) & (coords[:,1] < 0)])
-    final_quad.append(coords[(coords[:, 0] < 0) & (coords[:,1] < 0)])
-    
-    # Gather distance values for each coord from point and delete points outside radius
-    f1 = sortQuadrantPoints(final_quad, 0, quad_count, rad, np.array((0,0)))
-    f2 = sortQuadrantPoints(final_quad, 1, quad_count, rad, np.array((0,0)))
-    f3 = sortQuadrantPoints(final_quad, 2, quad_count, rad, np.array((0,0)))
-    f4 = sortQuadrantPoints(final_quad, 3, quad_count, rad, np.array((0,0)))
-    
-    # add all quadrants back together for final dataset
-    near = np.concatenate((f1, f2))
-    near = np.concatenate((near, f3))
-    near = np.concatenate((near, f4))
-    # unstandardize data back to original form
-    near[:,0] += locx
-    near[:,1] += locy
-    return near
 
 
+
+#########################
+
+# Variogram functions
+
+#########################
 
 # get variogram along the major or minor axis
 def axis_var(lagh, nug, nstruct, cc, vtype, a):
@@ -203,23 +216,6 @@ def axis_var(lagh, nug, nstruct, cc, vtype, a):
 
 
 
-# make array of x,y coordinates based on corners and resolution
-def pred_grid(xmin, xmax, ymin, ymax, pix):
-    cols = (xmax - xmin)/pix; rows = (ymax - ymin)/pix  # number of rows and columns
-    x = np.arange(xmin,xmax,pix); y = np.arange(ymin,ymax,pix) # make arrays
-
-    xx, yy = np.meshgrid(x,y) # make grid
-    yy = np.flip(yy) # flip upside down
-
-    # shape into array
-    x = np.reshape(xx, (int(rows)*int(cols), 1))
-    y = np.reshape(yy, (int(rows)*int(cols), 1))
-
-    Pred_grid_xy = np.concatenate((x,y), axis = 1) # combine coordinates
-    return Pred_grid_xy
-
-
-
 # rotation matrix (Azimuth = major axis direction)
 def Rot_Mat(Azimuth, a_max, a_min):
     theta = (Azimuth / 180.0) * np.pi
@@ -233,6 +229,58 @@ def Rot_Mat(Azimuth, a_max, a_min):
         ),
     )
     return Rot_Mat
+
+
+###########################
+
+# Covariance functions
+
+###########################
+
+
+# covariance matrix (n x n matrix) for covariance between each pair of data points
+def krig_cov(q, vario):
+    # unpack variogram parameters
+    Azimuth = vario[0]
+    nug = vario[1]
+    nstruct = vario[2]
+    vtype = vario[3]
+    cc = vario[4]
+    a_max = vario[5]
+    a_min = vario[6]
+    
+    c = -nug # nugget effect is made negative because we're calculating covariance instead of variance
+    for i in range(nstruct):
+        mat = np.matmul(q, Rot_Mat(Azimuth, a_max[i], a_min[i]))
+        
+        # covariances between measurements
+        d = pairwise_distances(mat,mat)
+        c = c + covar(vtype[i], d, 1) * cc[i]
+    return c
+
+
+# n x 1 covariance array for covariance between conditioning data and uknown
+def array_cov(q1, q2, vario):
+    # unpack variogram parameters
+    Azimuth = vario[0]
+    nug = vario[1]
+    nstruct = vario[2]
+    vtype = vario[3]
+    cc = vario[4]
+    a_max = vario[5]
+    a_min = vario[6]
+    
+    c = -nug # nugget effect is made negative because we're calculating covariance instead of variance
+    for i in range(nstruct):
+        rot_mat = Rot_Mat(Azimuth, a_max[i], a_min[i])
+
+        mat1 = np.matmul(q1, rot_mat) 
+        mat2 = np.matmul(q2.reshape(-1,2), rot_mat) 
+        
+        # covariances between measurements and unknown
+        d = np.sqrt(np.square(mat1 - mat2).sum(axis=1)) # calculate distance
+        c = c + covar(vtype[i], d, 1) * cc[i] # calculate covariances
+    return c
 
 
 
@@ -404,7 +452,7 @@ def okrige(Pred_grid, df, xx, yy, data, k, vario, rad):
 
 
 # sequential Gaussian simulation
-def sgsim(Pred_grid, df, xx, yy, data, k, vario, rad):
+def sgsim(Pred_grid, df, xx, yy, zz, k, vario, rad):
 
     """Sequential Gaussian simulation
     :param Pred_grid: x,y coordinate numpy array of prediction grid
@@ -416,69 +464,90 @@ def sgsim(Pred_grid, df, xx, yy, data, k, vario, rad):
     :vario: variogram parameters describing the spatial statistics
     """
     
+    # rename header names for consistency with other functions
+    df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"})
+    
     # generate random array for simulation order
     xyindex = np.arange(len(Pred_grid))
     random.shuffle(xyindex)
 
-    Var_1 = np.var(df[data]); # variance of data 
+    Var_1 = np.var(df["Z"].values); # variance of data 
+       
+    sgs = np.zeros(shape=len(Pred_grid))  # preallocate space for simulation
     
-    # preallocate space for simulation
-    sgs = np.zeros(shape=len(Pred_grid))
     
-    
-    with tqdm(total=len(Pred_grid), position=0, leave=True) as pbar:
-        for i in tqdm(range(0, len(Pred_grid)), position=0, leave=True):
-            pbar.update()
-            z = xyindex[i]
-            
-            # convert data to numpy array for faster speeds/parsing
-            npdata = df[['X','Y','Nbed']].to_numpy()
-            # gather nearby points
-            nearest = nearestNeighborSearch(rad, k, Pred_grid[z], npdata)
-               
-            # store bed elevation values in new array
-            norm_bed_val = nearest[:,-1]
-            norm_bed_val = norm_bed_val.reshape(len(norm_bed_val), 1)
-            norm_bed_val = norm_bed_val.T
-            # store X,Y pair values in new array
-            xy_val = nearest[:,:-1]
-            
-            # update K to reflect the amount of K values we got back from quadrant search
-            new_k = len(nearest)
-        
-        
-            # left hand side (covariance between data)
-            Kriging_Matrix = np.zeros(shape=((new_k+1, new_k+1)))
-            Kriging_Matrix[0:new_k,0:new_k] = cov(xy_val, xy_val, 0, vario)
-            Kriging_Matrix[new_k,0:new_k] = 1
-            Kriging_Matrix[0:new_k,new_k] = 1
-        
-            # Set up Right Hand Side (covariance between data and unknown)
-            r = np.zeros(shape=(new_k+1))
-            k_weights = r
-            r[0:new_k] = cov(xy_val, np.tile(Pred_grid[z], (new_k, 1)), 1, vario)
-            r[new_k] = 1 # unbiasedness constraint
-            Kriging_Matrix.reshape(((new_k+1)), ((new_k+1)))
-        
-            # Calculate Kriging Weights
-            k_weights = np.dot(np.linalg.pinv(Kriging_Matrix), r)
+    for i in tqdm(range(len(Pred_grid)), position=0, leave=True):
+        z = xyindex[i] # get coordinate index
+        nearest = nearestNeighborSearch(rad, k, Pred_grid[z], df[['X','Y','Z']])  # gather nearest neighbor points
+        norm_bed_val = nearest[:,-1]   # store bed elevation values in new array
+        xy_val = nearest[:,:-1]   # store X,Y pair values in new array
 
-            # get estimates
-            est = np.sum(k_weights[0:new_k]*norm_bed_val[:]) # kriging mean
-            var = Var_1 - np.sum(k_weights[0:new_k]*r[0:new_k]) # kriging variance
-        
-            if (var < 0): # make sure variances are non-negative
-                var = 0 
-        
-            sgs[z] = np.random.normal(est,math.sqrt(var),1) # simulate by randomly sampling a value
-        
-            # update the conditioning data
-            coords = Pred_grid[z:z+1,:]
-            dnew = {xx: [coords[0,0]], yy: [coords[0,1]], data: [sgs[z]]} 
-            dfnew = pd.DataFrame(data = dnew)
-            df = pd.concat([df,dfnew], sort=False) # add new points by concatenating dataframes 
-        
+        # update K to reflect the amount of K values we got back from quadrant search
+        new_k = len(nearest)
+
+        # left hand side (covariance between data)
+        Kriging_Matrix = np.zeros(shape=((new_k+1, new_k+1)))
+        Kriging_Matrix[0:new_k,0:new_k] = krig_cov(xy_val, vario)
+        Kriging_Matrix[new_k,0:new_k] = 1
+        Kriging_Matrix[0:new_k,new_k] = 1
+
+        # Set up Right Hand Side (covariance between data and unknown)
+        r = np.zeros(shape=(new_k+1))
+        k_weights = r
+        r[0:new_k] = array_cov(xy_val, np.tile(Pred_grid[z], new_k), vario)
+        r[new_k] = 1 # unbiasedness constraint
+        Kriging_Matrix.reshape(((new_k+1)), ((new_k+1)))
+
+        k_weights = np.dot(np.linalg.pinv(Kriging_Matrix), r) # Calculate Kriging Weights
+
+        # get estimates
+        est = np.sum(k_weights[0:new_k]*norm_bed_val) # kriging mean
+        var = Var_1 - np.sum(k_weights[0:new_k]*r[0:new_k]) # kriging variance
+        #print(var)
+
+        if (var < 0): # make sure variances are non-negative
+            #var = 0 
+            var = -var
+
+        #print(var)
+        sgs[z] = np.random.normal(est,math.sqrt(var),1) # simulate by randomly sampling a value
+
+        # update the conditioning data
+        coords = Pred_grid[z:z+1,:]
+        df = pd.concat([df,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 'Z': [sgs[z]]})], sort=False) # add new points by concatenating dataframes 
+
     return sgs
+
+
+
+def sgs_grid(df, xx, yy, zz, res, k, vario, rad):
+    
+    # rename header names for consistency with other functions
+    df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"})
+
+    print('Gridding data')
+    
+    df_grid, grid_matrix, rows, cols = grid_data(df, 'X', 'Y', 'Z', res) # grid data
+
+    df_data = df_grid.dropna()  # get gridded data without NaNs
+    df_nan = df_grid[df_grid["Z"].isnull() == True]  # extract coordinates with NaNs
+    Pred_grid = df_nan[['X','Y']].to_numpy() # convert pred_grid to numpy for consistency with other functions
+    
+    print('Simulating')
+    sgs = sgsim(Pred_grid, df_data, 'X', 'Y', 'Z', k, vario, rad) # simulate
+    
+    # add simulated values to conditioning data, and sort based on coordinates
+    sim_array = np.array([Pred_grid[:,0],Pred_grid[:,1],sgs])
+    sim_array = sim_array.T
+    df_sim = pd.DataFrame(sim_array, columns = ['X','Y','Z'])  # make dataframe of simulated data
+    df_data = df_data[['X','Y','Z']] # remove unwanted columns
+
+    frames = [df_sim, df_data] # concatenate dataframes
+    df_total = pd.concat(frames) 
+    
+    df_sorted = df_total.sort_values(['X','Y']) # reorder based on coordinates
+    
+    return df_sorted
 
 
 # In[ ]:
