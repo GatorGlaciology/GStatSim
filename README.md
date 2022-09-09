@@ -1,7 +1,7 @@
 <img src ="GStat-Sim/Images/GatorGlaciologyLogo-01.jpg" width="100" align = "right">
 
 # GStat-Sim
-GStat-Sim is a collection of functions and demos specifically designed for geostatistical interpolation. It is inspired by open source geostatistical resources such as GeostatsPy, Geostatistics Lessons, and SciKit-GStat. In my own research, I have found that geostatistical tools designed for industry applications do not have the flexibility to address the unique combination of challenges in ice sheet problems, including large crossover errors, spatially variable measurement uncertainty, extremely large datasets, non-linear trends, variability in measurement density, and non-stationarity. These tools are part of our ongoing effort to develop and adapt geostatistical techniques and other machine learning methods to glaciology.
+GStat-Sim is a collection of functions and demos specifically designed for geostatistical interpolation. It is inspired by open source geostatistical resources such as GeostatsPy, Geostatistics Lessons, and SciKit-GStat. In my own research, I have found that geostatistical tools designed for industry applications do not have the flexibility to address the unique combination of challenges in ice sheet problems, including large crossover errors, spatially variable measurement uncertainty, extremely large datasets, non-linear trends, variability in measurement density, and non-stationarity. These tools are part of our ongoing effort to develop and adapt open-access geostatistical functions.
 
 In its current state, the demos focus on the geostatistical simulation of subglacial topography. However, these protocols could be applied to a number topics in glaciology, or geoscientific problems in general.
 
