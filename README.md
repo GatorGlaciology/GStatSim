@@ -31,7 +31,7 @@ We have created tutorials that are designed to provide an intuitive understandin
 (Emma) Mickey MacKie is an assistant professor at the University of Florida.
 
 # Useage
-The functions are in the GlacierStats.py document. Just download the GlacierStats folder and make sure the GlacierStats.py script is in your working directory. The datasets for the demos are in the Data folder.
+The functions are in the GStatSim.py document. Just download the GStat-Sim folder and make sure the GStatSim.py script is in your working directory. The datasets for the demos are in the Data folder.
 
 ## Dependencies
 * Numpy
