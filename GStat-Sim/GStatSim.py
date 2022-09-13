@@ -16,6 +16,7 @@ import pandas as pd
 import sklearn as sklearn
 import math
 from scipy.spatial import distance_matrix
+from scipy.interpolate import Rbf
 from tqdm import tqdm
 import random
 from sklearn.metrics import pairwise_distances
@@ -106,10 +107,25 @@ def grid_data(df, xx, yy, zz, res):
     return df_grid, grid_matrix, rows, cols
 
 
+###################################
 
-# make prediction grid for NaN values in gridded data
+# RBF trend estimation
 
-    
+###################################
+
+def rbf_trend(grid_matrix, smooth_radius, res):
+    sigma = np.rint(smooth_radius/res)
+    ny, nx = grid_matrix.shape
+    rbfi = Rbf(np.where(~np.isnan(grid_matrix))[1],np.where(~np.isnan(grid_matrix))[0], grid_matrix[~np.isnan(grid_matrix)],smooth = sigma)
+
+    # evaluate RBF
+    yi = np.arange(nx)
+    xi = np.arange(ny)
+    xi,yi = np.meshgrid(xi, yi)
+    trend_rbf = rbfi(xi, yi)   # interpolated values
+    return trend_rbf
+
+
 ####################################
 
 # Nearest neighbor octant search
