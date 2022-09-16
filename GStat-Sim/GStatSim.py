@@ -1,14 +1,20 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# In[5]:
+
 
 ### geostatistical tools
+
+
+# In[3]:
 
 
 import numpy as np
 import numpy.linalg as linalg
 import pandas as pd
 import sklearn as sklearn
+from sklearn.neighbors import KDTree
 import math
 from scipy.spatial import distance_matrix
 from scipy.interpolate import Rbf
@@ -204,6 +210,100 @@ def nearestNeighborSearch_cluster(rad, count, loc, data2):
     near = smallest[~np.isnan(smallest)].reshape(-1,3) # remove nans
 
     return near, K
+
+# get nearest neighbor secondary data point and coordinates
+def nearestNeighborSecondary(loc, data2):
+    locx = loc[0]
+    locy = loc[1]
+
+    data = data2.copy()
+    centered_array = center(data['X'].values, data['Y'].values, locx, locy)
+    data["dist"] = distance_calculator(centered_array) # compute distance from grid cell of interest
+    data = data.sort_values('dist', ascending = True) # sort array by distances
+    data = data.reset_index() # reset index
+    nearest_second = data.iloc[0][['X','Y','Z']].values # get coordinates and value of nearest neighbor
+    return nearest_second
+
+
+# find co-located data for co-kriging and co-SGS
+def find_colocated(df1, xx1, yy1, zz1, df2, xx2, yy2, zz2):
+    
+    # rename columns
+    df1 = df1.rename(columns = {xx1: "X", yy1: "Y", zz1: "Z"})
+    df2 = df2.rename(columns = {xx2: "X", yy2: "Y", zz2: "Z"})
+    
+    # make KDTree
+    secondary_variable_xy = df2[['X','Y']].values
+    secondary_variable_tree = KDTree(secondary_variable_xy)
+
+    primary_variable_xy = df1[['X','Y']].values
+    nearest_indices = np.zeros(len(primary_variable_xy)) # initialize array of nearest neighbor indices
+    
+    # query search tree
+    for i in range(0,len(primary_variable_xy)):
+        nearest_indices[i] = secondary_variable_tree.query(primary_variable_xy[i:i+1,:],
+                                                           k=1,return_distance=False)
+    
+    nearest_indices = np.transpose(nearest_indices)
+    secondary_data = df2['Z']
+    colocated_secondary_data = secondary_data[nearest_indices]
+
+    df_colocated = pd.DataFrame(np.array(colocated_secondary_data).T, columns = ['colocated'])
+    df_colocated.reset_index(drop=True, inplace=True)
+    
+    return df_colocated
+
+
+# adaptive partioning recursive implementation
+def adaptive_partitioning(df_bed, xmin, xmax, ymin, ymax, i, max_points=100, min_length=25000, max_iter=None):
+    """
+    Rercursively split clusters until they are all below max_points, but don't go smaller than min_length
+    Inputs:
+        df_bed - DataFrame with X, Y, and K (cluster id)
+        xmin - min x value of this partion
+        xmax - max x value of this partion
+        ymin - min y value of this partion
+        ymax - max y value of this partion
+        i - keeps track of total calls to this function
+        max_points - all clusters will be "quartered" until points below this
+        min_length - minimum side length of sqaures, preference over max_points
+        max_iter - maximum iterations if worried about unending recursion
+    Outputs:
+        df_bed - updated DataFrame with new cluster assigned the next integer
+        i - number of iterations
+    """
+    # optional 'safety' if there is concern about runaway recursion
+    if max_iter is not None:
+        if i >= max_iter:
+            return df_bed, i
+    
+    dx = xmax - xmin
+    dy = ymax - ymin
+    
+    # >= and <= greedy so we don't miss any points
+    xleft = (df_bed.X >= xmin) & (df_bed.X <= xmin+dx/2)
+    xright = (df_bed.X <= xmax) & (df_bed.X >= xmin+dx/2)
+    ybottom = (df_bed.Y >= ymin) & (df_bed.Y <= ymin+dy/2)
+    ytop = (df_bed.Y <= ymax) & (df_bed.Y >= ymin+dy/2)
+    
+    # index the current cell into 4 quarters
+    q1 = df_bed.loc[xleft & ybottom]
+    q2 = df_bed.loc[xleft & ytop]
+    q3 = df_bed.loc[xright & ytop]
+    q4 = df_bed.loc[xright & ybottom]
+    
+    # for each quarter, qaurter if too many points, else assign K and return
+    for q in [q1, q2, q3, q4]:
+        if (q.shape[0] > max_points) & (dx/2 > min_length):
+            i = i+1
+            df_bed, i = adaptive_partitioning(df_bed, q.X.min(), q.X.max(), q.Y.min(), 
+                                              q.Y.max(), i, max_points, min_length, max_iter)
+        else:
+            qcount = df_bed.K.max()
+            qcount += 1
+            df_bed.loc[q.index, 'K'] = qcount
+            
+    return df_bed, i
 
 
 #########################
@@ -640,56 +740,160 @@ def cluster_SGS(Pred_grid, df, xx, yy, zz, kk, k, df_gamma, rad):
     return sgs
 
 
-# adaptive partioning recursive implementation
-def adaptive_partitioning(df_bed, xmin, xmax, ymin, ymax, i, max_points=100, min_length=25000, max_iter=None):
-    """
-    Rercursively split clusters until they are all below max_points, but don't go smaller than min_length
-    Inputs:
-        df_bed - DataFrame with X, Y, and K (cluster id)
-        xmin - min x value of this partion
-        xmax - max x value of this partion
-        ymin - min y value of this partion
-        ymax - max y value of this partion
-        i - keeps track of total calls to this function
-        max_points - all clusters will be "quartered" until points below this
-        min_length - minimum side length of sqaures, preference over max_points
-        max_iter - maximum iterations if worried about unending recursion
-    Outputs:
-        df_bed - updated DataFrame with new cluster assigned the next integer
-        i - number of iterations
-    """
-    # optional 'safety' if there is concern about runaway recursion
-    if max_iter is not None:
-        if i >= max_iter:
-            return df_bed, i
+###########################
+
+# Multivariate
+
+###########################
+
+# perform simple collocated cokriging with MM1
+def cokrige_mm1(Pred_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, k, vario, rad, corrcoef):
+
+    # unpack variogram parameters for rotation matrix
+    Azimuth = vario[0]
+    a_maj = vario[2]
+    a_min = vario[3]
+    rot_mat = Rot_Mat(Azimuth, a_maj, a_min) # rotation matrix for scaling distance based on ranges and anisotropy
     
-    dx = xmax - xmin
-    dy = ymax - ymin
+    # rename header names for consistency with other functions
+    df1 = df1.rename(columns = {xx1: "X", yy1: "Y", zz1: "Z"})
+    df2 = df2.rename(columns = {xx2: "X", yy2: "Y", zz2: "Z"})
     
-    # >= and <= greedy so we don't miss any points
-    xleft = (df_bed.X >= xmin) & (df_bed.X <= xmin+dx/2)
-    xright = (df_bed.X <= xmax) & (df_bed.X >= xmin+dx/2)
-    ybottom = (df_bed.Y >= ymin) & (df_bed.Y <= ymin+dy/2)
-    ytop = (df_bed.Y <= ymax) & (df_bed.Y >= ymin+dy/2)
+    Mean_1 = np.average(df1['Z']) # mean of primary data
+    Var_1 = np.var(df1['Z']); # variance of primary data 
+    Mean_2 = np.average(df2['Z']) # mean of secondary data
+    Var_2 = np.var(df2['Z']); # variance of secondary data 
     
-    # index the current cell into 4 quarters
-    q1 = df_bed.loc[xleft & ybottom]
-    q2 = df_bed.loc[xleft & ytop]
-    q3 = df_bed.loc[xright & ytop]
-    q4 = df_bed.loc[xright & ybottom]
+    # preallocate space for mean and variance
+    est_cokrige = np.zeros(shape=len(Pred_grid)) # make zeros array the size of the prediction grid
+    var_cokrige = np.zeros(shape=len(Pred_grid))
     
-    # for each quarter, qaurter if too many points, else assign K and return
-    for q in [q1, q2, q3, q4]:
-        if (q.shape[0] > max_points) & (dx/2 > min_length):
-            i = i+1
-            df_bed, i = adaptive_partitioning(df_bed, q.X.min(), q.X.max(), q.Y.min(), 
-                                              q.Y.max(), i, max_points, min_length, max_iter)
-        else:
-            qcount = df_bed.K.max()
-            qcount += 1
-            df_bed.loc[q.index, 'K'] = qcount
-            
-    return df_bed, i
+    
+    # for each coordinate in the prediction grid
+    for z in tqdm(range(0, len(Pred_grid))):
+        # gather nearest primary data points within radius
+        nearest = nearestNeighborSearch(rad, k, Pred_grid[z], df1[['X','Y','Z']])
+        
+        # get nearest neighbor secondary data point
+        nearest_second = nearestNeighborSecondary(Pred_grid[z], df2[['X','Y','Z']])
+        
+        # format nearest point bed values matrix
+        norm_bed_val = nearest[:,-1] # values of nearest neighbor points
+        norm_bed_val = norm_bed_val.reshape(len(norm_bed_val),1)
+        norm_bed_val = norm_bed_val.T
+        norm_bed_val = np.append(norm_bed_val, [nearest_second[-1]]) # append secondary data value
+        xy_val = nearest[:, :-1] # coordinates of nearest neighbor points
+        xy_second = nearest_second[:-1] # secondary data coordinates
+        xy_val = np.append(xy_val, [xy_second], axis = 0) # append coordinates of secondary data
+       
+        # set up covariance matrix
+        new_k = len(nearest)
+        Kriging_Matrix = np.zeros(shape=((new_k + 1, new_k + 1)))
+        Kriging_Matrix[0:new_k+1, 0:new_k+1] = krig_cov(xy_val, vario, rot_mat) # covariance within primary data
+        
+        # get covariance between data and unknown grid cell
+        r = np.zeros(shape=(new_k + 1))
+        k_weights = r
+        r[0:new_k+1] = array_cov(xy_val, np.tile(Pred_grid[z], new_k + 1), vario, rot_mat)
+        r[new_k] = r[new_k] * corrcoef # correlation between primary and nearest neighbor (zero lag) secondary data
+        
+        # update covariance matrix with secondary info (gamma2 = rho12 * gamma1)
+        Kriging_Matrix[new_k, 0 : new_k+1] = Kriging_Matrix[new_k, 0 : new_k+1] * corrcoef
+        Kriging_Matrix[0 : new_k+1, new_k] = Kriging_Matrix[0 : new_k+1, new_k] * corrcoef
+        Kriging_Matrix[new_k, new_k] = 1
+        Kriging_Matrix.reshape(((new_k + 1)), ((new_k + 1)))
+        
+        # solve kriging system
+        k_weights, res, rank, s = np.linalg.lstsq(Kriging_Matrix, r, rcond = None) # get weights
+        part1 = Mean_1 + np.sum(k_weights[0:new_k]*(norm_bed_val[0:new_k] - Mean_1)/np.sqrt(Var_1))
+        part2 = k_weights[new_k] * (nearest_second[-1] - Mean_2)/np.sqrt(Var_2)
+        est_cokrige[z] = part1 + part2 # compute mean
+        var_cokrige[z] = 1 - np.sum(k_weights*r) # compute variance
+
+    return est_cokrige, var_cokrige
+    
+    
+# perform cosimulation with MM1
+def cosim_mm1(Pred_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, k, vario, rad, corrcoef):
+
+    # unpack variogram parameters
+    Azimuth = vario[0]
+    a_maj = vario[2]
+    a_min = vario[3]
+    rot_mat = Rot_Mat(Azimuth, a_maj, a_min) # rotation matrix for scaling distance based on ranges and anisotropy
+    
+    # rename header names for consistency with other functions
+    df1 = df1.rename(columns = {xx1: "X", yy1: "Y", zz1: "Z"})
+    df2 = df2.rename(columns = {xx2: "X", yy2: "Y", zz2: "Z"})
+    
+    # generate random array for simulation order
+    xyindex = np.arange(len(Pred_grid))
+    random.shuffle(xyindex)
+    
+    Mean_1 = np.average(df1['Z']) # mean of primary data
+    Var_1 = np.var(df1['Z']); # variance of primary data 
+    Mean_2 = np.average(df2['Z']) # mean of secondary data
+    Var_2 = np.var(df2['Z']); # variance of secondary data 
+    
+    # preallocate space for mean and variance
+    est_cokrige = np.zeros(shape=len(Pred_grid)) # make zeros array the size of the prediction grid
+    var_cokrige = np.zeros(shape=len(Pred_grid))
+    
+    cosim = np.zeros(shape=len(Pred_grid))  # preallocate space for simulation
+    
+    # for each coordinate in the prediction grid
+    for z in tqdm(range(0, len(Pred_grid))):
+        # gather nearest primary data points within radius
+        nearest = nearestNeighborSearch(rad, k, Pred_grid[z], df1[['X','Y','Z']])
+        
+        # get nearest neighbor secondary data point
+        nearest_second = nearestNeighborSecondary(Pred_grid[z], df2[['X','Y','Z']])
+        
+        # format nearest point bed values matrix
+        norm_bed_val = nearest[:,-1] # values of nearest neighbor points
+        norm_bed_val = norm_bed_val.reshape(len(norm_bed_val),1)
+        norm_bed_val = norm_bed_val.T
+        norm_bed_val = np.append(norm_bed_val, [nearest_second[-1]]) # append secondary data value
+        xy_val = nearest[:, :-1] # coordinates of nearest neighbor points
+        xy_second = nearest_second[:-1] # secondary data coordinates
+        xy_val = np.append(xy_val, [xy_second], axis = 0) # append coordinates of secondary data
+       
+        # set up covariance matrix
+        new_k = len(nearest)
+        Kriging_Matrix = np.zeros(shape=((new_k + 1, new_k + 1)))
+        Kriging_Matrix[0:new_k+1, 0:new_k+1] = krig_cov(xy_val, vario, rot_mat) # covariance within primary data
+        
+        # get covariance between data and unknown grid cell
+        r = np.zeros(shape=(new_k + 1))
+        k_weights = r
+        r[0:new_k+1] = array_cov(xy_val, np.tile(Pred_grid[z], new_k + 1), vario, rot_mat)
+        r[new_k] = r[new_k] * corrcoef # correlation between primary and nearest neighbor (zero lag) secondary data
+        
+        # update covariance matrix with secondary info (gamma2 = rho12 * gamma1)
+        Kriging_Matrix[new_k, 0 : new_k+1] = Kriging_Matrix[new_k, 0 : new_k+1] * corrcoef
+        Kriging_Matrix[0 : new_k+1, new_k] = Kriging_Matrix[0 : new_k+1, new_k] * corrcoef
+        Kriging_Matrix[new_k, new_k] = 1
+        Kriging_Matrix.reshape(((new_k + 1)), ((new_k + 1)))
+        
+        # solve kriging system
+        k_weights, res, rank, s = np.linalg.lstsq(Kriging_Matrix, r, rcond = None) # get weights
+        part1 = Mean_1 + np.sum(k_weights[0:new_k]*(norm_bed_val[0:new_k] - Mean_1)/np.sqrt(Var_1))
+        part2 = k_weights[new_k] * (nearest_second[-1] - Mean_2)/np.sqrt(Var_2)
+        est_cokrige = part1 + part2 # compute mean
+        var_cokrige = 1 - np.sum(k_weights*r) # compute variance
+
+        if (var_cokrige < 0): # make sure variances are non-negative
+            var_cokrige = -var_cokrige
+
+        cosim[z] = np.random.normal(est_cokrige,math.sqrt(var_cokrige),1) # simulate by randomly sampling a value
+
+        # update the conditioning data
+        coords = Pred_grid[z:z+1,:]
+        df1 = pd.concat([df1,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 'Z': [cosim[z]]})], sort=False) # add new points by concatenating dataframes 
+        
+    return cosim
+
+# In[ ]:
 
 
 
