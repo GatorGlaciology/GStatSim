@@ -1,13 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[5]:
-
 
 ### geostatistical tools
-
-
-# In[3]:
 
 
 import numpy as np
@@ -645,10 +640,56 @@ def cluster_SGS(Pred_grid, df, xx, yy, zz, kk, k, df_gamma, rad):
     return sgs
 
 
-
-
-
-# In[ ]:
+# adaptive partioning recursive implementation
+def adaptive_partitioning(df_bed, xmin, xmax, ymin, ymax, i, max_points=100, min_length=25000, max_iter=None):
+    """
+    Rercursively split clusters until they are all below max_points, but don't go smaller than min_length
+    Inputs:
+        df_bed - DataFrame with X, Y, and K (cluster id)
+        xmin - min x value of this partion
+        xmax - max x value of this partion
+        ymin - min y value of this partion
+        ymax - max y value of this partion
+        i - keeps track of total calls to this function
+        max_points - all clusters will be "quartered" until points below this
+        min_length - minimum side length of sqaures, preference over max_points
+        max_iter - maximum iterations if worried about unending recursion
+    Outputs:
+        df_bed - updated DataFrame with new cluster assigned the next integer
+        i - number of iterations
+    """
+    # optional 'safety' if there is concern about runaway recursion
+    if max_iter is not None:
+        if i >= max_iter:
+            return df_bed, i
+    
+    dx = xmax - xmin
+    dy = ymax - ymin
+    
+    # >= and <= greedy so we don't miss any points
+    xleft = (df_bed.X >= xmin) & (df_bed.X <= xmin+dx/2)
+    xright = (df_bed.X <= xmax) & (df_bed.X >= xmin+dx/2)
+    ybottom = (df_bed.Y >= ymin) & (df_bed.Y <= ymin+dy/2)
+    ytop = (df_bed.Y <= ymax) & (df_bed.Y >= ymin+dy/2)
+    
+    # index the current cell into 4 quarters
+    q1 = df_bed.loc[xleft & ybottom]
+    q2 = df_bed.loc[xleft & ytop]
+    q3 = df_bed.loc[xright & ytop]
+    q4 = df_bed.loc[xright & ybottom]
+    
+    # for each quarter, qaurter if too many points, else assign K and return
+    for q in [q1, q2, q3, q4]:
+        if (q.shape[0] > max_points) & (dx/2 > min_length):
+            i = i+1
+            df_bed, i = adaptive_partitioning(df_bed, q.X.min(), q.X.max(), q.Y.min(), 
+                                              q.Y.max(), i, max_points, min_length, max_iter)
+        else:
+            qcount = df_bed.K.max()
+            qcount += 1
+            df_bed.loc[q.index, 'K'] = qcount
+            
+    return df_bed, i
 
 
 
