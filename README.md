@@ -38,14 +38,12 @@ The functions are in the GStatSim.py document. Just download the GStat-Sim folde
 ## Dependencies
 * Numpy
 * Pandas
-* Math
 * Scipy
 * Matplotlib
 * tqdm
 * Sklearn
 * earthpy
 * GeostatsPy
-* random
 * SciKit-GStat
 
 These can all be installed using the command *pip install (package name)*
