@@ -104,7 +104,7 @@ def grid_data(df, xx, yy, zz, res):
     # make dataframe    
     grid_total = np.array([grid_coord[:,0], grid_coord[:,1], grid_sum, grid_count, grid_array])    
     df_grid = pd.DataFrame(grid_total.T, columns = ['X', 'Y', 'Sum', 'Count', 'Z'])  # make dataframe of simulated data
-        
+    grid_matrix = np.flipud(grid_matrix) # flip upside down   
     return df_grid, grid_matrix, rows, cols
 
 
@@ -331,20 +331,17 @@ def Rot_Mat(Azimuth, a_maj, a_min):
 
 ###########################
 
-# covariance function definition. h is effective lage (where range is 1)
+# covariance function definition. h is effective lag (where range is 1)
 def covar(h, sill):
-    c = 1 - sill + np.exp(-3 * h) # Exponential
+    c = 1 - sill + np.exp(-3 * h) # Exponential covariance function
     return c
 
 
 # covariance matrix (n x n matrix) for covariance between each pair of data points. rot_mat is a rotation matrix
 def krig_cov(q, vario, rot_mat):
     # unpack variogram parameters
-    Azimuth = vario[0]
     nug = vario[1]
-    a_maj = vario[2]
-    a_min = vario[3]
-    sill = vario[4]
+    sill = vario[4] - nug
                                 
     c = -nug # nugget effect is made negative because we're calculating covariance instead of variance
     mat = np.matmul(q, rot_mat)
@@ -358,11 +355,8 @@ def krig_cov(q, vario, rot_mat):
 # n x 1 covariance array for covariance between conditioning data and uknown
 def array_cov(q1, q2, vario, rot_mat):
     # unpack variogram parameters
-    Azimuth = vario[0]
     nug = vario[1]
-    a_maj = vario[2]
-    a_min = vario[3]
-    sill = vario[4]
+    sill = vario[4] - nug
                             
     c = -nug # nugget effect is made negative because we're calculating covariance instead of variance
     mat1 = np.matmul(q1, rot_mat) 
@@ -414,29 +408,34 @@ def skrige(Pred_grid, df, xx, yy, zz, k, vario, rad):
     
     
     # for each coordinate in the prediction grid
-    for z in tqdm(range(0, len(Pred_grid))):
-        # gather nearest points within radius
-        nearest = nearestNeighborSearch(rad, k, Pred_grid[z], df[['X','Y','Z']])
-        
-        # format nearest point bed values matrix
-        norm_bed_val = nearest[:,-1]
-        norm_bed_val = norm_bed_val.reshape(len(norm_bed_val),1)
-        norm_bed_val = norm_bed_val.T
-        xy_val = nearest[:, :-1]
-       
-        # calculate new_k value relative to count of near points within radius
-        new_k = len(nearest)
-        Kriging_Matrix = np.zeros(shape=((new_k, new_k)))
-        Kriging_Matrix = krig_cov(xy_val, vario, rot_mat)
-            
-        r = np.zeros(shape=(new_k))
-        k_weights = r
-        r = array_cov(xy_val, np.tile(Pred_grid[z], new_k), vario, rot_mat)
-        Kriging_Matrix.reshape(((new_k)), ((new_k)))
-            
-        k_weights, res, rank, s = np.linalg.lstsq(Kriging_Matrix, r, rcond = None)
-        est_SK[z] = Mean_1 + (np.sum(k_weights*(norm_bed_val[:] - Mean_1))) 
-        var_SK[z] = Var_1 - np.sum(k_weights*r)
+    for z, predxy in enumerate(tqdm(Pred_grid, position=0, leave=True)):
+        test_idx = np.sum(Pred_grid[z]==df[['X', 'Y']].values,axis = 1)
+        if np.sum(test_idx==2)==0: # not our hard data
+            # gather nearest points within radius
+            nearest = nearestNeighborSearch(rad, k, Pred_grid[z], df[['X','Y','Z']])
+
+            # format nearest point bed values matrix
+            norm_bed_val = nearest[:,-1]
+            norm_bed_val = norm_bed_val.reshape(len(norm_bed_val),1)
+            norm_bed_val = norm_bed_val.T
+            xy_val = nearest[:, :-1]
+
+            # calculate new_k value relative to count of near points within radius
+            new_k = len(nearest)
+            Kriging_Matrix = np.zeros(shape=((new_k, new_k)))
+            Kriging_Matrix = krig_cov(xy_val, vario, rot_mat)
+
+            r = np.zeros(shape=(new_k))
+            k_weights = np.zeros(shape=(new_k))
+            r = array_cov(xy_val, np.tile(Pred_grid[z], new_k), vario, rot_mat)
+            Kriging_Matrix.reshape(((new_k)), ((new_k)))
+
+            k_weights, res, rank, s = np.linalg.lstsq(Kriging_Matrix, r, rcond = None)
+            est_SK[z] = Mean_1 + (np.sum(k_weights*(norm_bed_val[:] - Mean_1))) 
+            var_SK[z] = Var_1 - np.sum(k_weights*r)
+        else:
+            est_SK[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
+            var_SK[z] = 0
 
     return est_SK, var_SK
 
@@ -477,39 +476,44 @@ def okrige(Pred_grid, df, xx, yy, zz, k, vario, rad):
     var_OK = np.zeros(shape=len(Pred_grid))
 
     
-    for z in tqdm(range(0, len(Pred_grid))):
-        # find nearest data points
-        nearest = nearestNeighborSearch(rad, k, Pred_grid[z], df[['X','Y','Z']])
-        
-        # format matrix of nearest bed values
-        norm_bed_val = nearest[:,-1]
-        local_mean = np.mean(norm_bed_val) # compute the local mean
-        norm_bed_val = norm_bed_val.reshape(len(norm_bed_val),1)
-        norm_bed_val = norm_bed_val.T
-        xy_val = nearest[:,:-1]
-        
-        # calculate new_k value relative to number of nearby points within radius
-        new_k = len(nearest)
-        
-        # left hand side (covariance between data)
-        Kriging_Matrix = np.zeros(shape=((new_k+1, new_k+1)))
-        Kriging_Matrix[0:new_k,0:new_k] = krig_cov(xy_val, vario, rot_mat)
-        Kriging_Matrix[new_k,0:new_k] = 1
-        Kriging_Matrix[0:new_k,new_k] = 1
-        
-        # Set up Right Hand Side (covariance between data and unknown)
-        r = np.zeros(shape=(new_k+1))
-        k_weights = r
-        r[0:new_k] = array_cov(xy_val, np.tile(Pred_grid[z], new_k), vario, rot_mat)
-        r[new_k] = 1 # unbiasedness constraint
-        Kriging_Matrix.reshape(((new_k+1)), ((new_k+1)))
-        
-        # Calculate Kriging Weights
-        k_weights, res, rank, s = np.linalg.lstsq(Kriging_Matrix, r, rcond = None)
-        
-        # get estimates
-        est_OK[z] = local_mean + np.sum(k_weights[0:new_k]*(norm_bed_val[:] - local_mean))
-        var_OK[z] = Var_1 - np.sum(k_weights[0:new_k]*r[0:new_k])
+    for z, predxy in enumerate(tqdm(Pred_grid, position=0, leave=True)):
+        test_idx = np.sum(Pred_grid[z]==df[['X', 'Y']].values,axis = 1)
+        if np.sum(test_idx==2)==0: # not our hard data
+            # find nearest data points
+            nearest = nearestNeighborSearch(rad, k, Pred_grid[z], df[['X','Y','Z']])
+
+            # format matrix of nearest bed values
+            norm_bed_val = nearest[:,-1]
+            local_mean = np.mean(norm_bed_val) # compute the local mean
+            norm_bed_val = norm_bed_val.reshape(len(norm_bed_val),1)
+            norm_bed_val = norm_bed_val.T
+            xy_val = nearest[:,:-1]
+
+            # calculate new_k value relative to number of nearby points within radius
+            new_k = len(nearest)
+
+            # left hand side (covariance between data)
+            Kriging_Matrix = np.zeros(shape=((new_k+1, new_k+1)))
+            Kriging_Matrix[0:new_k,0:new_k] = krig_cov(xy_val, vario, rot_mat)
+            Kriging_Matrix[new_k,0:new_k] = 1
+            Kriging_Matrix[0:new_k,new_k] = 1
+
+            # Set up Right Hand Side (covariance between data and unknown)
+            r = np.zeros(shape=(new_k+1))
+            k_weights = np.zeros(shape=(new_k+1))
+            r[0:new_k] = array_cov(xy_val, np.tile(Pred_grid[z], new_k), vario, rot_mat)
+            r[new_k] = 1 # unbiasedness constraint
+            Kriging_Matrix.reshape(((new_k+1)), ((new_k+1)))
+
+            # Calculate Kriging Weights
+            k_weights, res, rank, s = np.linalg.lstsq(Kriging_Matrix, r, rcond = None)
+
+            # get estimates
+            est_OK[z] = local_mean + np.sum(k_weights[0:new_k]*(norm_bed_val[:] - local_mean))
+            var_OK[z] = Var_1 - np.sum(k_weights[0:new_k]*r[0:new_k])
+        else:
+            est_OK[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
+            var_OK[z] = 0
         
     return est_OK, var_OK
 
@@ -549,36 +553,38 @@ def skrige_SGS(Pred_grid, df, xx, yy, zz, k, vario, rad):
     sgs = np.zeros(shape=len(Pred_grid))  # preallocate space for simulation
     
     
-    for i in tqdm(range(len(Pred_grid)), position=0, leave=True):
-        z = xyindex[i] # get coordinate index
-        nearest = nearestNeighborSearch(rad, k, Pred_grid[z], df[['X','Y','Z']])  # gather nearest neighbor points
-        norm_bed_val = nearest[:,-1]   # store bed elevation values in new array
-        xy_val = nearest[:,:-1]   # store X,Y pair values in new array
+    for idx, predxy in enumerate(tqdm(Pred_grid, position=0, leave=True)):
+        z = xyindex[idx] # get coordinate index
+        test_idx = np.sum(Pred_grid[z]==df[['X', 'Y']].values,axis = 1)
+        if np.sum(test_idx==2)==0: # not our hard data
+            nearest = nearestNeighborSearch(rad, k, Pred_grid[z], df[['X','Y','Z']])  # gather nearest neighbor points
+            norm_bed_val = nearest[:,-1]   # store bed elevation values in new array
+            xy_val = nearest[:,:-1]   # store X,Y pair values in new array
 
-        # update K to reflect the amount of K values we got back from quadrant search
-        new_k = len(nearest)
+            # update K to reflect the amount of K values we got back from quadrant search
+            new_k = len(nearest)
 
-        # left hand side (covariance between data)
-        Kriging_Matrix = np.zeros(shape=((new_k, new_k)))
-        Kriging_Matrix = krig_cov(xy_val, vario, rot_mat)
+            # left hand side (covariance between data)
+            Kriging_Matrix = np.zeros(shape=((new_k, new_k)))
+            Kriging_Matrix = krig_cov(xy_val, vario, rot_mat)
 
-        # Set up Right Hand Side (covariance between data and unknown)
-        r = np.zeros(shape=(new_k))
-        k_weights = r
-        r = array_cov(xy_val, np.tile(Pred_grid[z], new_k), vario, rot_mat)
-        Kriging_Matrix.reshape(((new_k)), ((new_k)))
+            # Set up Right Hand Side (covariance between data and unknown)
+            r = np.zeros(shape=(new_k))
+            k_weights = np.zeros(shape=(new_k))
+            r = array_cov(xy_val, np.tile(Pred_grid[z], new_k), vario, rot_mat)
+            Kriging_Matrix.reshape(((new_k)), ((new_k)))
 
-        k_weights, res, rank, s = np.linalg.lstsq(Kriging_Matrix, r, rcond = None) # Calculate Kriging Weights
-        #k_weights = np.dot(np.linalg.pinv(Kriging_Matrix), r) 
+            k_weights, res, rank, s = np.linalg.lstsq(Kriging_Matrix, r, rcond = None) # Calculate Kriging Weights
+            #k_weights = np.dot(np.linalg.pinv(Kriging_Matrix), r) 
 
-        # get estimates
-        est = Mean_1 + np.sum(k_weights*(norm_bed_val - Mean_1)) # simple kriging mean
-        var = Var_1 - np.sum(k_weights*r) # simple kriging variance
+            # get estimates
+            est = Mean_1 + np.sum(k_weights*(norm_bed_val - Mean_1)) # simple kriging mean
+            var = Var_1 - np.sum(k_weights*r) # simple kriging variance
+            var = np.absolute(var) # make sure variances are non-negative
 
-        if (var < 0): # make sure variances are non-negative
-            var = -var
-
-        sgs[z] = np.random.normal(est,math.sqrt(var),1) # simulate by randomly sampling a value
+            sgs[z] = np.random.normal(est,math.sqrt(var),1) # simulate by randomly sampling a value
+        else:
+            sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
 
         # update the conditioning data
         coords = Pred_grid[z:z+1,:]
@@ -620,41 +626,42 @@ def okrige_SGS(Pred_grid, df, xx, yy, zz, k, vario, rad):
     sgs = np.zeros(shape=len(Pred_grid))  # preallocate space for simulation
     
     
-    for i in tqdm(range(len(Pred_grid)), position=0, leave=True):
-        z = xyindex[i] # get coordinate index
-        nearest = nearestNeighborSearch(rad, k, Pred_grid[z], df[['X','Y','Z']])  # gather nearest neighbor points
-        norm_bed_val = nearest[:,-1]   # store bed elevation values in new array
-        xy_val = nearest[:,:-1]   # store X,Y pair values in new array
-        local_mean = np.mean(norm_bed_val) # compute the local mean
+    for idx, predxy in enumerate(tqdm(Pred_grid, position=0, leave=True)):
+        z = xyindex[idx] # get coordinate index
+        test_idx = np.sum(Pred_grid[z]==df[['X', 'Y']].values,axis = 1)
+        if np.sum(test_idx==2)==0: # not our hard data
+            nearest = nearestNeighborSearch(rad, k, Pred_grid[z], df[['X','Y','Z']])  # gather nearest neighbor points
+            norm_bed_val = nearest[:,-1]   # store bed elevation values in new array
+            xy_val = nearest[:,:-1]   # store X,Y pair values in new array
+            local_mean = np.mean(norm_bed_val) # compute the local mean
 
-        # update K to reflect the amount of K values we got back from quadrant search
-        new_k = len(nearest)
+            # update K to reflect the amount of K values we got back from quadrant search
+            new_k = len(nearest)
 
-        # left hand side (covariance between data)
-        Kriging_Matrix = np.zeros(shape=((new_k+1, new_k+1)))
-        Kriging_Matrix[0:new_k,0:new_k] = krig_cov(xy_val, vario, rot_mat)
-        Kriging_Matrix[new_k,0:new_k] = 1
-        Kriging_Matrix[0:new_k,new_k] = 1
+            # left hand side (covariance between data)
+            Kriging_Matrix = np.zeros(shape=((new_k+1, new_k+1)))
+            Kriging_Matrix[0:new_k,0:new_k] = krig_cov(xy_val, vario, rot_mat)
+            Kriging_Matrix[new_k,0:new_k] = 1
+            Kriging_Matrix[0:new_k,new_k] = 1
 
-        # Set up Right Hand Side (covariance between data and unknown)
-        r = np.zeros(shape=(new_k+1))
-        k_weights = r
-        r[0:new_k] = array_cov(xy_val, np.tile(Pred_grid[z], new_k), vario, rot_mat)
-        r[new_k] = 1 # unbiasedness constraint
-        Kriging_Matrix.reshape(((new_k+1)), ((new_k+1)))
+            # Set up Right Hand Side (covariance between data and unknown)
+            r = np.zeros(shape=(new_k+1))
+            k_weights = np.zeros(shape=(new_k+1))
+            r[0:new_k] = array_cov(xy_val, np.tile(Pred_grid[z], new_k), vario, rot_mat)
+            r[new_k] = 1 # unbiasedness constraint
+            Kriging_Matrix.reshape(((new_k+1)), ((new_k+1)))
 
-        k_weights, res, rank, s = np.linalg.lstsq(Kriging_Matrix, r, rcond = None) # Calculate Kriging Weights
-        #k_weights = np.dot(np.linalg.pinv(Kriging_Matrix), r) # Calculate Kriging Weights
+            k_weights, res, rank, s = np.linalg.lstsq(Kriging_Matrix, r, rcond = None) # Calculate Kriging Weights
+            #k_weights = np.dot(np.linalg.pinv(Kriging_Matrix), r) # Calculate Kriging Weights
 
-        # get estimates
-        est = local_mean + np.sum(k_weights[0:new_k]*(norm_bed_val - local_mean)) # kriging mean
-        var = Var_1 - np.sum(k_weights[0:new_k]*r[0:new_k]) # kriging variance
-        #print(var)
+            # get estimates
+            est = local_mean + np.sum(k_weights[0:new_k]*(norm_bed_val - local_mean)) # kriging mean
+            var = Var_1 - np.sum(k_weights[0:new_k]*r[0:new_k]) # kriging variance
+            var = np.absolute(var) # make sure variances are non-negative
 
-        if (var < 0): # make sure variances are non-negative
-            var = -var
-
-        sgs[z] = np.random.normal(est,math.sqrt(var),1) # simulate by randomly sampling a value
+            sgs[z] = np.random.normal(est,math.sqrt(var),1) # simulate by randomly sampling a value
+        else:
+            sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]] 
 
         # update the conditioning data
         coords = Pred_grid[z:z+1,:]
@@ -692,47 +699,48 @@ def cluster_SGS(Pred_grid, df, xx, yy, zz, kk, k, df_gamma, rad):
     sgs = np.zeros(shape=len(Pred_grid))  # preallocate space for simulation
     
     
-    for i in tqdm(range(len(Pred_grid)), position=0, leave=True):
-        z = xyindex[i] # get coordinate index
-        nearest, K = nearestNeighborSearch_cluster(rad, k, Pred_grid[z], df[['X','Y','Z','K']])  # gather nearest neighbor points and K cluster value
-        vario = df_gamma.Variogram[K] # define variogram parameters using cluster value
-        norm_bed_val = nearest[:,-1]   # store bed elevation values in new array
-        xy_val = nearest[:,:-1]   # store X,Y pair values in new array
-        
-        # unpack variogram parameters
-        Azimuth = vario[0]
-        nug = vario[1]
-        a_maj = vario[2]
-        a_min = vario[3]
-        sill = vario[4]
-        rot_mat = Rot_Mat(Azimuth, a_maj, a_min) # rotation matrix for scaling distance based on ranges and anisotropy
+    for idx, predxy in enumerate(tqdm(Pred_grid, position=0, leave=True)):
+        z = xyindex[idx] # get coordinate index
+        test_idx = np.sum(Pred_grid[z]==df[['X', 'Y']].values,axis = 1)
+        if np.sum(test_idx==2)==0: # not our hard data
+            nearest, K = nearestNeighborSearch_cluster(rad, k, Pred_grid[z], df[['X','Y','Z','K']])  # gather nearest neighbor points and K cluster value
+            vario = df_gamma.Variogram[K] # define variogram parameters using cluster value
+            norm_bed_val = nearest[:,-1]   # store bed elevation values in new array
+            xy_val = nearest[:,:-1]   # store X,Y pair values in new array
 
-        # update K to reflect the amount of K values we got back from quadrant search
-        new_k = len(nearest)
+            # unpack variogram parameters
+            Azimuth = vario[0]
+            nug = vario[1]
+            a_maj = vario[2]
+            a_min = vario[3]
+            sill = vario[4]
+            rot_mat = Rot_Mat(Azimuth, a_maj, a_min) # rotation matrix for scaling distance based on ranges and anisotropy
 
-        # left hand side (covariance between data)
-        Kriging_Matrix = np.zeros(shape=((new_k, new_k)))
-        Kriging_Matrix[0:new_k,0:new_k] = krig_cov(xy_val, vario, rot_mat) 
+            # update K to reflect the amount of K values we got back from quadrant search
+            new_k = len(nearest)
 
-        # Set up Right Hand Side (covariance between data and unknown)
-        r = np.zeros(shape=(new_k))
-        k_weights = r
-        r = array_cov(xy_val, np.tile(Pred_grid[z], new_k), vario, rot_mat)
-        Kriging_Matrix.reshape(((new_k)), ((new_k)))
+            # left hand side (covariance between data)
+            Kriging_Matrix = np.zeros(shape=((new_k, new_k)))
+            Kriging_Matrix[0:new_k,0:new_k] = krig_cov(xy_val, vario, rot_mat) 
 
-        k_weights, res, rank, s = np.linalg.lstsq(Kriging_Matrix, r, rcond = None) # Calculate Kriging Weights
+            # Set up Right Hand Side (covariance between data and unknown)
+            r = np.zeros(shape=(new_k))
+            k_weights = np.zeros(shape=(new_k))
+            r = array_cov(xy_val, np.tile(Pred_grid[z], new_k), vario, rot_mat)
+            Kriging_Matrix.reshape(((new_k)), ((new_k)))
 
-        # get estimates
-        est = Mean_1 + np.sum(k_weights*(norm_bed_val - Mean_1)) # simple kriging mean
-        var = Var_1 - np.sum(k_weights*r) # simple kriging variance
+            k_weights, res, rank, s = np.linalg.lstsq(Kriging_Matrix, r, rcond = None) # Calculate Kriging Weights
 
-        if (var < 0): # make sure variances are non-negative
-            #var = 0 
-            var = -var
+            # get estimates
+            est = Mean_1 + np.sum(k_weights*(norm_bed_val - Mean_1)) # simple kriging mean
+            var = Var_1 - np.sum(k_weights*r) # simple kriging variance
+            var = np.absolute(var) # make sure variances are non-negative
 
-        #print(var)
-        sgs[z] = np.random.normal(est,math.sqrt(var),1) # simulate by randomly sampling a value
-
+            #print(var)
+            sgs[z] = np.random.normal(est,math.sqrt(var),1) # simulate by randomly sampling a value
+        else:
+            sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]] 
+            
         # update the conditioning data
         coords = Pred_grid[z:z+1,:]
         df = pd.concat([df,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 'Z': [sgs[z]], 'K': [K]})], sort=False) # add new points and K value by concatenating dataframes 
@@ -770,45 +778,50 @@ def cokrige_mm1(Pred_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, k, vario, rad
     
     
     # for each coordinate in the prediction grid
-    for z in tqdm(range(0, len(Pred_grid))):
-        # gather nearest primary data points within radius
-        nearest = nearestNeighborSearch(rad, k, Pred_grid[z], df1[['X','Y','Z']])
-        
-        # get nearest neighbor secondary data point
-        nearest_second = nearestNeighborSecondary(Pred_grid[z], df2[['X','Y','Z']])
-        
-        # format nearest point bed values matrix
-        norm_bed_val = nearest[:,-1] # values of nearest neighbor points
-        norm_bed_val = norm_bed_val.reshape(len(norm_bed_val),1)
-        norm_bed_val = norm_bed_val.T
-        norm_bed_val = np.append(norm_bed_val, [nearest_second[-1]]) # append secondary data value
-        xy_val = nearest[:, :-1] # coordinates of nearest neighbor points
-        xy_second = nearest_second[:-1] # secondary data coordinates
-        xy_val = np.append(xy_val, [xy_second], axis = 0) # append coordinates of secondary data
-       
-        # set up covariance matrix
-        new_k = len(nearest)
-        Kriging_Matrix = np.zeros(shape=((new_k + 1, new_k + 1)))
-        Kriging_Matrix[0:new_k+1, 0:new_k+1] = krig_cov(xy_val, vario, rot_mat) # covariance within primary data
-        
-        # get covariance between data and unknown grid cell
-        r = np.zeros(shape=(new_k + 1))
-        k_weights = r
-        r[0:new_k+1] = array_cov(xy_val, np.tile(Pred_grid[z], new_k + 1), vario, rot_mat)
-        r[new_k] = r[new_k] * corrcoef # correlation between primary and nearest neighbor (zero lag) secondary data
-        
-        # update covariance matrix with secondary info (gamma2 = rho12 * gamma1)
-        Kriging_Matrix[new_k, 0 : new_k+1] = Kriging_Matrix[new_k, 0 : new_k+1] * corrcoef
-        Kriging_Matrix[0 : new_k+1, new_k] = Kriging_Matrix[0 : new_k+1, new_k] * corrcoef
-        Kriging_Matrix[new_k, new_k] = 1
-        Kriging_Matrix.reshape(((new_k + 1)), ((new_k + 1)))
-        
-        # solve kriging system
-        k_weights, res, rank, s = np.linalg.lstsq(Kriging_Matrix, r, rcond = None) # get weights
-        part1 = Mean_1 + np.sum(k_weights[0:new_k]*(norm_bed_val[0:new_k] - Mean_1)/np.sqrt(Var_1))
-        part2 = k_weights[new_k] * (nearest_second[-1] - Mean_2)/np.sqrt(Var_2)
-        est_cokrige[z] = part1 + part2 # compute mean
-        var_cokrige[z] = 1 - np.sum(k_weights*r) # compute variance
+    for z, predxy in enumerate(tqdm(Pred_grid, position=0, leave=True)):
+        test_idx = np.sum(Pred_grid[z]==df1[['X', 'Y']].values,axis = 1)
+        if np.sum(test_idx==2)==0: # not our hard data
+            # gather nearest primary data points within radius
+            nearest = nearestNeighborSearch(rad, k, Pred_grid[z], df1[['X','Y','Z']])
+
+            # get nearest neighbor secondary data point
+            nearest_second = nearestNeighborSecondary(Pred_grid[z], df2[['X','Y','Z']])
+
+            # format nearest point bed values matrix
+            norm_bed_val = nearest[:,-1] # values of nearest neighbor points
+            norm_bed_val = norm_bed_val.reshape(len(norm_bed_val),1)
+            norm_bed_val = norm_bed_val.T
+            norm_bed_val = np.append(norm_bed_val, [nearest_second[-1]]) # append secondary data value
+            xy_val = nearest[:, :-1] # coordinates of nearest neighbor points
+            xy_second = nearest_second[:-1] # secondary data coordinates
+            xy_val = np.append(xy_val, [xy_second], axis = 0) # append coordinates of secondary data
+
+            # set up covariance matrix
+            new_k = len(nearest)
+            Kriging_Matrix = np.zeros(shape=((new_k + 1, new_k + 1)))
+            Kriging_Matrix[0:new_k+1, 0:new_k+1] = krig_cov(xy_val, vario, rot_mat) # covariance within primary data
+
+            # get covariance between data and unknown grid cell
+            r = np.zeros(shape=(new_k + 1))
+            k_weights = np.zeros(shape=(new_k + 1))
+            r[0:new_k+1] = array_cov(xy_val, np.tile(Pred_grid[z], new_k + 1), vario, rot_mat)
+            r[new_k] = r[new_k] * corrcoef # correlation between primary and nearest neighbor (zero lag) secondary data
+
+            # update covariance matrix with secondary info (gamma2 = rho12 * gamma1)
+            Kriging_Matrix[new_k, 0 : new_k+1] = Kriging_Matrix[new_k, 0 : new_k+1] * corrcoef
+            Kriging_Matrix[0 : new_k+1, new_k] = Kriging_Matrix[0 : new_k+1, new_k] * corrcoef
+            Kriging_Matrix[new_k, new_k] = 1
+            Kriging_Matrix.reshape(((new_k + 1)), ((new_k + 1)))
+
+            # solve kriging system
+            k_weights, res, rank, s = np.linalg.lstsq(Kriging_Matrix, r, rcond = None) # get weights
+            part1 = Mean_1 + np.sum(k_weights[0:new_k]*(norm_bed_val[0:new_k] - Mean_1)/np.sqrt(Var_1))
+            part2 = k_weights[new_k] * (nearest_second[-1] - Mean_2)/np.sqrt(Var_2)
+            est_cokrige[z] = part1 + part2 # compute mean
+            var_cokrige[z] = 1 - np.sum(k_weights*r) # compute variance
+        else:
+            est_cokrige[z] = df1['Z'].values[np.where(test_idx==2)[0][0]]
+            var_cokrige[z] = 0
 
     return est_cokrige, var_cokrige
     
@@ -842,50 +855,53 @@ def cosim_mm1(Pred_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, k, vario, rad, 
     cosim = np.zeros(shape=len(Pred_grid))  # preallocate space for simulation
     
     # for each coordinate in the prediction grid
-    for z in tqdm(range(0, len(Pred_grid))):
-        # gather nearest primary data points within radius
-        nearest = nearestNeighborSearch(rad, k, Pred_grid[z], df1[['X','Y','Z']])
-        
-        # get nearest neighbor secondary data point
-        nearest_second = nearestNeighborSecondary(Pred_grid[z], df2[['X','Y','Z']])
-        
-        # format nearest point bed values matrix
-        norm_bed_val = nearest[:,-1] # values of nearest neighbor points
-        norm_bed_val = norm_bed_val.reshape(len(norm_bed_val),1)
-        norm_bed_val = norm_bed_val.T
-        norm_bed_val = np.append(norm_bed_val, [nearest_second[-1]]) # append secondary data value
-        xy_val = nearest[:, :-1] # coordinates of nearest neighbor points
-        xy_second = nearest_second[:-1] # secondary data coordinates
-        xy_val = np.append(xy_val, [xy_second], axis = 0) # append coordinates of secondary data
-       
-        # set up covariance matrix
-        new_k = len(nearest)
-        Kriging_Matrix = np.zeros(shape=((new_k + 1, new_k + 1)))
-        Kriging_Matrix[0:new_k+1, 0:new_k+1] = krig_cov(xy_val, vario, rot_mat) # covariance within primary data
-        
-        # get covariance between data and unknown grid cell
-        r = np.zeros(shape=(new_k + 1))
-        k_weights = r
-        r[0:new_k+1] = array_cov(xy_val, np.tile(Pred_grid[z], new_k + 1), vario, rot_mat)
-        r[new_k] = r[new_k] * corrcoef # correlation between primary and nearest neighbor (zero lag) secondary data
-        
-        # update covariance matrix with secondary info (gamma2 = rho12 * gamma1)
-        Kriging_Matrix[new_k, 0 : new_k+1] = Kriging_Matrix[new_k, 0 : new_k+1] * corrcoef
-        Kriging_Matrix[0 : new_k+1, new_k] = Kriging_Matrix[0 : new_k+1, new_k] * corrcoef
-        Kriging_Matrix[new_k, new_k] = 1
-        Kriging_Matrix.reshape(((new_k + 1)), ((new_k + 1)))
-        
-        # solve kriging system
-        k_weights, res, rank, s = np.linalg.lstsq(Kriging_Matrix, r, rcond = None) # get weights
-        part1 = Mean_1 + np.sum(k_weights[0:new_k]*(norm_bed_val[0:new_k] - Mean_1)/np.sqrt(Var_1))
-        part2 = k_weights[new_k] * (nearest_second[-1] - Mean_2)/np.sqrt(Var_2)
-        est_cokrige = part1 + part2 # compute mean
-        var_cokrige = 1 - np.sum(k_weights*r) # compute variance
+    for idx, predxy in enumerate(tqdm(Pred_grid, position=0, leave=True)):
+        z = xyindex[idx] # get coordinate index
+        test_idx = np.sum(Pred_grid[z]==df1[['X', 'Y']].values,axis = 1)
+        if np.sum(test_idx==2)==0: # not our hard data
+            # gather nearest primary data points within radius
+            nearest = nearestNeighborSearch(rad, k, Pred_grid[z], df1[['X','Y','Z']])
 
-        if (var_cokrige < 0): # make sure variances are non-negative
-            var_cokrige = -var_cokrige
+            # get nearest neighbor secondary data point
+            nearest_second = nearestNeighborSecondary(Pred_grid[z], df2[['X','Y','Z']])
 
-        cosim[z] = np.random.normal(est_cokrige,math.sqrt(var_cokrige),1) # simulate by randomly sampling a value
+            # format nearest point bed values matrix
+            norm_bed_val = nearest[:,-1] # values of nearest neighbor points
+            norm_bed_val = norm_bed_val.reshape(len(norm_bed_val),1)
+            norm_bed_val = norm_bed_val.T
+            norm_bed_val = np.append(norm_bed_val, [nearest_second[-1]]) # append secondary data value
+            xy_val = nearest[:, :-1] # coordinates of nearest neighbor points
+            xy_second = nearest_second[:-1] # secondary data coordinates
+            xy_val = np.append(xy_val, [xy_second], axis = 0) # append coordinates of secondary data
+
+            # set up covariance matrix
+            new_k = len(nearest)
+            Kriging_Matrix = np.zeros(shape=((new_k + 1, new_k + 1)))
+            Kriging_Matrix[0:new_k+1, 0:new_k+1] = krig_cov(xy_val, vario, rot_mat) # covariance within primary data
+
+            # get covariance between data and unknown grid cell
+            r = np.zeros(shape=(new_k + 1))
+            k_weights = np.zeros(shape=(new_k + 1))
+            r[0:new_k+1] = array_cov(xy_val, np.tile(Pred_grid[z], new_k + 1), vario, rot_mat)
+            r[new_k] = r[new_k] * corrcoef # correlation between primary and nearest neighbor (zero lag) secondary data
+
+            # update covariance matrix with secondary info (gamma2 = rho12 * gamma1)
+            Kriging_Matrix[new_k, 0 : new_k+1] = Kriging_Matrix[new_k, 0 : new_k+1] * corrcoef
+            Kriging_Matrix[0 : new_k+1, new_k] = Kriging_Matrix[0 : new_k+1, new_k] * corrcoef
+            Kriging_Matrix[new_k, new_k] = 1
+            Kriging_Matrix.reshape(((new_k + 1)), ((new_k + 1)))
+
+            # solve kriging system
+            k_weights, res, rank, s = np.linalg.lstsq(Kriging_Matrix, r, rcond = None) # get weights
+            part1 = Mean_1 + np.sum(k_weights[0:new_k]*(norm_bed_val[0:new_k] - Mean_1)/np.sqrt(Var_1))
+            part2 = k_weights[new_k] * (nearest_second[-1] - Mean_2)/np.sqrt(Var_2)
+            est_cokrige = part1 + part2 # compute mean
+            var_cokrige = 1 - np.sum(k_weights*r) # compute variance
+            var_cokrige = np.absolute(var_cokrige) # make sure variances are non-negative
+
+            cosim[z] = np.random.normal(est_cokrige,math.sqrt(var_cokrige),1) # simulate by randomly sampling a value
+        else:
+            cosim[z] = df1['Z'].values[np.where(test_idx==2)[0][0]] 
 
         # update the conditioning data
         coords = Pred_grid[z:z+1,:]
