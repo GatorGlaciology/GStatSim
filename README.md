@@ -7,6 +7,8 @@ In its current state, the demos focus on the geostatistical simulation of subgla
 
 We will continuously develop new tools and tutorials to address specific technical challenges in geostatistics. Do you have feedback or suggestions? Specific things that we should account for? Feel free to contact me at emackie@ufl.edu. Our goal is to create tools that are useful and accessible, so we welcome your thoughts and insight.
 
+<img src ="GStat-Sim/Images/GStat-sim_master_figure.jpg" align = "center">
+
 # Features
 
 ## Functions
