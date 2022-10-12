@@ -28,7 +28,11 @@ We have created tutorials that are designed to provide an intuitive understandin
 * **3_Simple_kriging_and_ordinary_kriging.ipynb** - Demonstration of simple kriging and ordinary kriging interpolation.
 * **4_Sequential_Gaussian_Simulation.ipynb** - An introduction to stochastic simulation.
 * **5_interpolation_with_anisotropy.ipynb** - A demonstration of kriging and SGS with anisotropy.
-* **6_non-stationary_SGS_example1.ipynb** - A tutorial on SGS with multiple variograms. This demo uses k-means clustering to divide the conditioning data into groups that are each assigned their own variogram.
+* **6_non-stationary_SGS_example1.ipynb** - A tutorial on SGS with multiple variograms. This demo uses k-means clustering to divide the conditioning data
+* **7_non-stationary_SGS_example2.ipynb** - SGS using multiple variograms where the clusters are determined automatically.
+* **8_interpolation_with_a_trend.ipynb** - Kriging and SGS in the presence of a large-scale trend
+* **9_cokriging_and_cosimulation_MM1.ipynb** - Kriging and SGS using secondary constraints
+into groups that are each assigned their own variogram.
 
 
 # The author
