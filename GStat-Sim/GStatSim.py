@@ -620,8 +620,7 @@ def okrige_SGS(Pred_grid, df, xx, yy, zz, k, vario, rad):
     # generate random array for simulation order
     xyindex = np.arange(len(Pred_grid))
     random.shuffle(xyindex)
-
-    Var_1 = np.var(df["Z"].values); # variance of data 
+    Var_1 = np.var(df["Z"].values) # variance of data 
        
     sgs = np.zeros(shape=len(Pred_grid))  # preallocate space for simulation
     
