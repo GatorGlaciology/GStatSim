@@ -273,8 +273,8 @@ def adaptive_partitioning(df_data, XMIN, XMAX, YMIN, YMAX, i, MAX_POINTS, MIN_LE
         i - number of iterations
     """
     # optional 'safety' if there is concern about runaway recursion
-    if max_iter is not None:
-        if i >= max_iter:
+    if MAX_ITER is not None:
+        if i >= MAX_ITER:
             return df_data, i
     
     dx = XMAX - XMIN
@@ -294,7 +294,7 @@ def adaptive_partitioning(df_data, XMIN, XMAX, YMIN, YMAX, i, MAX_POINTS, MIN_LE
     
     # for each quarter, qaurter if too many points, else assign K and return
     for q in [q1, q2, q3, q4]:
-        if (q.shape[0] > MAX_POINTS) & (dx/2 > min_length):
+        if (q.shape[0] > MAX_POINTS) & (dx/2 > MIN_LENGTH):
             i = i+1
             df_data, i = adaptive_partitioning(df_data, q.X.min(), 
                                                q.X.max(), q.Y.min(), q.Y.max(), i, 
@@ -303,6 +303,9 @@ def adaptive_partitioning(df_data, XMIN, XMAX, YMIN, YMAX, i, MAX_POINTS, MIN_LE
             qcount = df_data.K.max()
             qcount += 1
             df_data.loc[q.index, 'K'] = qcount
+            
+            # make clusters zero indexed
+            #df_data.K = df_data.K.astype(int) - 1
             
     return df_data, i
 
