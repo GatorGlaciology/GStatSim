@@ -1,14 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[5]:
-
-
 ### geostatistical tools
-
-
-# In[3]:
-
 
 import numpy as np
 import numpy.linalg as linalg
@@ -23,7 +16,7 @@ import random
 from sklearn.metrics import pairwise_distances
 
 
-###############################################################################
+############################
 
 # Grid data
 
@@ -252,9 +245,13 @@ class NearestNeighbor:
         df_colocated.reset_index(drop=True, inplace=True)
 
         return df_colocated
-    
 
-# adaptive partioning recursive implementation
+###############################
+
+# adaptive partioning
+
+###############################
+
 def adaptive_partitioning(df_data, xmin, xmax, ymin, ymax, i, max_points, min_length, max_iter=None):
     """
     Rercursively split clusters until they are all below max_points, but don't go smaller than min_length
@@ -301,11 +298,12 @@ def adaptive_partitioning(df_data, xmin, xmax, ymin, ymax, i, max_points, min_le
                                                max_points, min_length, max_iter)
         else:
             qcount = df_data.K.max()
-            qcount += 1
+            # ensure zero indexing
+            if np.isnan(qcount) == True:
+                qcount = 0
+            else:
+                qcount += 1
             df_data.loc[q.index, 'K'] = qcount
-            
-            # make clusters zero indexed
-            #df_data.K = df_data.K.astype(int) - 1
             
     return df_data, i
 
@@ -370,6 +368,8 @@ class Covariance:
 
         return covariance_array
     # 
+
+######################################
 
 # Simple Kriging Function
 
@@ -890,9 +890,3 @@ class Interpolation:
             df1 = pd.concat([df1,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 'Z': [cosim[z]]})], sort=False) # add new points by concatenating dataframes 
 
         return cosim
-
-# In[ ]:
-
-
-
-
