@@ -29,7 +29,8 @@ class Gridding:
     def prediction_grid(xmin, xmax, ymin, ymax, res):
         cols = np.rint((xmax - xmin + res)/res)
         rows = np.rint((ymax - ymin + res)/res)  # number of rows and columns
-        x = np.arange(xmin,xmax + res,res); y = np.arange(ymin,ymax + res,res) 
+        x = np.linspace(xmin, xmin+(cols*res), num=int(cols), endpoint=False)
+        y = np.linspace(ymin, ymin+(rows*res), num=int(rows), endpoint=False)
         xx, yy = np.meshgrid(x,y) # make grid
         yy = np.flip(yy) # flip upside down
         x = np.reshape(xx, (int(rows)*int(cols), 1)) # shape into array
