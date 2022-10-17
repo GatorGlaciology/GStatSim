@@ -58,4 +58,4 @@ These can all be installed using the command *pip install (package name)*
 
 The demos use radar bed measurements from the Center for the Remote Sensing of Ice Sheets (CReSIS, 2020).
 
-CReSIS. 2020. REPLACE_WITH_RADAR_NAME Data, Lawrence, Kansas, USA. Digital Media. http://data.cresis.ku.edu/.
+CReSIS. 2020. Radar depth sounder, Lawrence, Kansas, USA. Digital Media. http://data.cresis.ku.edu/.
