@@ -367,13 +367,13 @@ class Covariance:
         covariance_array = c + Covariance.covar(effective_lag, sill) # calculate covariances
 
         return covariance_array
-    # 
 
 ######################################
 
 # Simple Kriging Function
 
 ######################################
+
 class Interpolation: 
 
     def skrige(prediction_grid, df, xx, yy, zz, num_points, vario, radius):
@@ -395,7 +395,7 @@ class Interpolation:
         rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) # rotation matrix for scaling distance based on ranges and anisotropy
 
         df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"}) # rename header names for consistency with other functions   
-        mean_1 = np.average(df['Z']) # mean of input data
+        mean_1 = df['Z'].mean() # mean of input data
         var_1 = np.var(df['Z']); # variance of input data 
         est_sk = np.zeros(shape=len(prediction_grid)) # preallocate space for mean and variance
         var_sk = np.zeros(shape=len(prediction_grid))
@@ -547,16 +547,16 @@ class Interpolation:
         rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) # rotation matrix for scaling distance based on ranges and anisotropy
 
         # rename header names for consistency with other functions
-        df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"})
+        df = df.rename(columns = {xx: 'X', yy: 'Y', zz: 'Z'})
         xyindex = np.arange(len(prediction_grid)) # generate random array for simulation order
         random.shuffle(xyindex)
-        mean_1 = np.average(df["Z"].values) # mean of input data
-        var_1 = np.var(df["Z"].values) # variance of data   
+        mean_1 = df['Z'].mean() # mean of input data
+        var_1 = df['Z'].var() # variance of data   
         sgs = np.zeros(shape=len(prediction_grid))  # preallocate space for simulation
 
         for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
             z = xyindex[idx] # get coordinate index
-            test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values,axis = 1)
+            test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values, axis=1)
             if np.sum(test_idx==2)==0: # not our hard data
                 
                 # get nearest neighbors
@@ -663,7 +663,7 @@ class Interpolation:
 
         return sgs
 
-    # sgsim with multiple clusters
+# SGS with multiple clusters
     def cluster_sgs(prediction_grid, df, xx, yy, zz, kk, num_points, df_gamma, radius):
 
         """Sequential Gaussian simulation
@@ -683,7 +683,7 @@ class Interpolation:
         random.shuffle(xyindex)
         mean_1 = np.average(df["Z"].values) # mean of input data
         var_1 = np.var(df["Z"].values); # variance of data       
-        sgs = np.zeros(shape=len(prediction_grid))  # preallocate space for simulation    
+        sgs = np.zeros(shape=len(prediction_grid))  # preallocate space for simulation
 
         for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
             z = xyindex[idx] # get coordinate index
@@ -723,11 +723,12 @@ class Interpolation:
 
                 sgs[z] = np.random.normal(est,math.sqrt(var),1) # simulate by randomly sampling a value
             else:
-                sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]] 
+                sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
+                cluster_number = df['K'].values[np.where(test_idx==2)[0][0]]
 
             coords = prediction_grid[z:z+1,:] # update the conditioning data
             df = pd.concat([df,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 
-                                             'Z': [sgs[z]], 'K': [cluster_number]})], sort=False) 
+                                             'Z': [sgs[z]], 'K': [cluster_number]})], sort=False)
 
         return sgs
 
@@ -837,7 +838,7 @@ class Interpolation:
         for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
             z = xyindex[idx] # get coordinate index
             test_idx = np.sum(prediction_grid[z]==df1[['X', 'Y']].values,axis = 1)
-            if np.sum(test_idx==2)==0: # not our hard data  
+            if np.sum(test_idx==2)==0: # not our hard data
                 
                 # get nearest neighbors
                 nearest = NearestNeighbor.nearest_neighbor_search(radius, num_points, 
@@ -884,7 +885,7 @@ class Interpolation:
 
                 cosim[z] = np.random.normal(est_cokrige,math.sqrt(var_cokrige),1) # simulate by randomly sampling a value
             else:
-                cosim[z] = df1['Z'].values[np.where(test_idx==2)[0][0]] 
+                cosim[z] = df1['Z'].values[np.where(test_idx==2)[0][0]]
 
             coords = prediction_grid[z:z+1,:] # update the conditioning data
             df1 = pd.concat([df1,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 'Z': [cosim[z]]})], sort=False) # add new points by concatenating dataframes 
