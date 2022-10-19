@@ -16,9 +16,11 @@ Some of the tools in GStat-Sim:
 
 * **skrige** - Simple kriging
 * **okrige** - Ordinary kriging
-* **skrige_SGS** - Sequential Gaussian simulation using simple kriging
-* **okrige_SGS** - Sequential Gaussian simulation using ordinary kriging
-* **cluster_SGS** - Sequential Gaussian simulation where different variograms are used in different areas
+* **skrige_sgs** - Sequential Gaussian simulation using simple kriging
+* **okrige_sgs** - Sequential Gaussian simulation using ordinary kriging
+* **cluster_sgs** - Sequential Gaussian simulation where different variograms are used in different areas
+* **cokrige_mm1** - Cokriging (kriging with a secondary constraint) under Markov assumptions 
+* **cosim_mm1** - Cosimulation under Markov assumptions
 
 ## Demos
 We have created tutorials that are designed to provide an intuitive understanding of geostatistical methods and to demonstrate how these methods are used. The current demos are:
