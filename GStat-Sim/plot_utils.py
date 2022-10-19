@@ -13,7 +13,8 @@ def make_colorbar(fig, im, vmin, vmax, clabel, ax=None):
     cbar.set_label(clabel, rotation=270, labelpad=15)
     return cbar
 
-def splot2D(df, title, xlabel='X [m]', ylabel='Y [m]', clabel='Bed [m]', x='X', y='Y', c='Bed', vmin=-400, vmax=600, s=0.5):
+def splot2D(df, title, xlabel='X [m]', ylabel='Y [m]', clabel='Bed [m]', x='X', y='Y', c='Bed', 
+            vmin=-400, vmax=600, s=0.5):
     fig, ax = plt.subplots(1, figsize=(5,5))
     im = plt.scatter(df[x], df[y], c=df[c], vmin=vmin, vmax=vmax, 
                      marker='.', s=s, cmap='gist_earth')
@@ -28,7 +29,7 @@ def splot2D(df, title, xlabel='X [m]', ylabel='Y [m]', clabel='Bed [m]', x='X', 
     plt.show()
     
 def mplot1(Pred_grid_xy, sim, rows, cols, title, xlabel='X [m]', ylabel='Y [m]', 
-           clabel='Bed [m]', vmin=-400, vmax=600, hillshade=False):
+           clabel='Bed [m]', vmin=-400, vmax=600, hillshade=False, titlepad=None):
     x_mat = Pred_grid_xy[:,0].reshape((rows, cols))
     y_mat = Pred_grid_xy[:,1].reshape((rows, cols))
     mat = sim.reshape((rows, cols))
@@ -41,7 +42,10 @@ def mplot1(Pred_grid_xy, sim, rows, cols, title, xlabel='X [m]', ylabel='Y [m]',
     if hillshade == True:
         hillshade = es.hillshade(mat, azimuth=210, altitude=10)
         plt.pcolormesh(x_mat, y_mat, hillshade, cmap='Greys', alpha=0.1)
-    plt.title(title)
+    if titlepad is None:
+        plt.title(title)
+    else:
+        plt.title(title, pad=titlepad)
     plt.xlabel(xlabel); plt.ylabel(ylabel)
     plt.xticks(np.linspace(xmin, xmax, 5))
     plt.yticks(np.linspace(ymin, ymax, 5))
@@ -83,6 +87,36 @@ def mplot2_std(Pred_grid_xy, pred, std, rows, cols, title1, title2):
 
     # make colorbar
     cbar = make_colorbar(fig, im, 0, 150, 'Bed [m]', ax=ax2)
+
+    plt.tight_layout()
+    plt.show()
+    
+def mplot2_hillshade(Pred_grid_xy, sim1, sim2, rows, cols, title1, title2):
+    x_mat = Pred_grid_xy[:,0].reshape((rows, cols))
+    y_mat = Pred_grid_xy[:,1].reshape((rows, cols))
+    sim1_mat = sim1.reshape((rows, cols))
+    sim2_mat = sim2.reshape((rows, cols))
+    
+    xmin = Pred_grid_xy[:,0].min(); xmax = Pred_grid_xy[:,0].max()
+    ymin = Pred_grid_xy[:,1].min(); ymax = Pred_grid_xy[:,1].max()
+    
+    plots = [sim1_mat, sim2_mat]
+    titles = [title1, title2]
+
+    fig, axs = plt.subplots(1, 2, figsize=(10,5))
+
+    for i, (ax, plot) in enumerate(zip(axs, plots)):
+        sgs_mat = plot.reshape((rows, cols))
+        hillshade = es.hillshade(plot, azimuth = 210, altitude = 10)
+        im = ax.pcolormesh(x_mat, y_mat, plot, vmin=-400, vmax=600, cmap='gist_earth')
+        ax.pcolormesh(x_mat, y_mat, hillshade, cmap='Greys', alpha=0.1)
+        ax.set_title(f'{titles[i]}')
+        ax.set_xlabel('X [m]')
+        if i == 0:
+            ax.set_ylabel('Y [m]')
+        ax.set_xticks(np.linspace(xmin, xmax, 5))
+        ax.set_yticks(np.linspace(ymin, ymax, 5))
+        ax.axis('scaled')
 
     plt.tight_layout()
     plt.show()
