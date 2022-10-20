@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling",
+	"numpy",
+	"pandas",
+	"scipy",
+	"matplotlib",
+	"tqdm",
+	"scikit-learn",
+	"earthpy",
+	"scikit-gstat"]
+build-backend = "hatchling.build"
+
+[project]
+name = "GStatSim_mjfield2"
+version = "0.0.1"
+authors = [
+	{ name="Foo Bar", email="mjfield2@outlook.com" },
+]
+description = "testing GStatSim packaging"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+	"Programming Language :: Python :: 3",
+	"License :: OSI Approved :: MIT License",
+	"Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/mjfield2/GStat-Sim/tree/pypi"
+"Bug Tracker" = "https://github.com/mjfield2/GStat-Sim/tree/pypi/issues"
