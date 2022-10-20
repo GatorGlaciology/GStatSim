@@ -1,7 +1,7 @@
 <img src ="GStat-Sim/Images/GatorGlaciologyLogo-01.jpg" width="100" align = "right">
 
 # GStat-Sim
-GStat-Sim is a collection of functions and demos specifically designed for geostatistical interpolation. It is inspired by open source geostatistical resources such as GeostatsPy, Geostatistics Lessons, and SciKit-GStat. In my own research, I have found that geostatistical tools designed for industry applications do not have the flexibility to address the unique combination of challenges in ice sheet problems, including large crossover errors, spatially variable measurement uncertainty, extremely large datasets, non-linear trends, variability in measurement density, and non-stationarity. These tools are part of our ongoing effort to develop and adapt open-access geostatistical functions.
+GStat-Sim is a Python package specifically designed for geostatistical interpolation and simulation. It is inspired by open source geostatistical resources such as GeostatsPy and SciKit-GStat. The functions are intended to address the challenges of working with datasets with large crossover errors, non-linear trends, variability in measurement density, and non-stationarity. These tools are part of our ongoing effort to develop and adapt open-access geostatistical functions.
 
 In its current state, the demos focus on the geostatistical simulation of subglacial topography. However, these protocols could be applied to a number topics in glaciology, or geoscientific problems in general.
 
@@ -37,11 +37,16 @@ We have created tutorials that are designed to provide an intuitive understandin
 into groups that are each assigned their own variogram.
 
 
-# The author
-(Emma) Mickey MacKie is an assistant professor at the University of Florida.
+# Contributors
+(Emma) Mickey MacKie, University of Florida
+Michael Field, University of Florida
+Lijing Wang, Stanford University
+(Zhen) David Yin, Stanford University
+Nathan Schoedl, University of Florida
+Matthew Hibbs, University of Florida
 
 # Useage
-The functions are in the GStatSim.py document. Just download the GStat-Sim folder and make sure the GStatSim.py script is in your working directory. The datasets for the demos are in the Data folder.
+Install GStatSim with *pip install GStatSim*
 
 ## Package dependencies
 * Numpy
