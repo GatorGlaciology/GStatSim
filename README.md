@@ -43,15 +43,16 @@ into groups that are each assigned their own variogram.
 # Useage
 The functions are in the GStatSim.py document. Just download the GStat-Sim folder and make sure the GStatSim.py script is in your working directory. The datasets for the demos are in the Data folder.
 
-## Dependencies
+## Package dependencies
 * Numpy
 * Pandas
 * Scipy
-* Matplotlib
 * tqdm
 * Sklearn
+
+## Requirements for visualization and variogram analysis
+* Matplotlib
 * earthpy
-* GeostatsPy
 * SciKit-GStat
 
 These can all be installed using the command *pip install (package name)*
