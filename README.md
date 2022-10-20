@@ -1,7 +1,7 @@
 <img src ="GStat-Sim/Images/GatorGlaciologyLogo-01.jpg" width="100" align = "right">
 
-# GStat-Sim
-GStat-Sim is a Python package specifically designed for geostatistical interpolation and simulation. It is inspired by open source geostatistical resources such as GeostatsPy and SciKit-GStat. The functions are intended to address the challenges of working with datasets with large crossover errors, non-linear trends, variability in measurement density, and non-stationarity. These tools are part of our ongoing effort to develop and adapt open-access geostatistical functions.
+# GStatSim
+GStatSim is a Python package specifically designed for geostatistical interpolation and simulation. It is inspired by open source geostatistical resources such as GeostatsPy and SciKit-GStat. The functions are intended to address the challenges of working with datasets with large crossover errors, non-linear trends, variability in measurement density, and non-stationarity. These tools are part of our ongoing effort to develop and adapt open-access geostatistical functions.
 
 In its current state, the demos focus on the geostatistical simulation of subglacial topography. However, these protocols could be applied to a number topics in glaciology, or geoscientific problems in general.
 
@@ -12,7 +12,7 @@ We will continuously develop new tools and tutorials to address specific technic
 # Features
 
 ## Functions
-Some of the tools in GStat-Sim:
+Some of the tools in GStatSim:
 
 * **skrige** - Simple kriging
 * **okrige** - Ordinary kriging
