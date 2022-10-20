@@ -15,7 +15,6 @@ from tqdm import tqdm
 import random
 from sklearn.metrics import pairwise_distances
 
-
 ############################
 
 # Grid data
@@ -24,9 +23,18 @@ from sklearn.metrics import pairwise_distances
 
 class Gridding:
 
-    # make array of x,y coordinates based on corners and resolution. 
-    # This is the grid of values for simulation
     def prediction_grid(xmin, xmax, ymin, ymax, res):
+        """
+        Make prediction grid
+        Inputs:
+            xmin - minimum x extent
+            xmax - maximum x extent
+            ymin - minimum y extent
+            ymax - maximum y extent
+            res - grid cell resolution
+        Outputs:
+            prediction_grid_xy - x,y array of coordinates
+        """ 
         cols = np.rint((xmax - xmin + res)/res)
         rows = np.rint((ymax - ymin + res)/res)  
         x = np.linspace(xmin, xmin+(cols*res), num=int(cols), endpoint=False)
@@ -38,10 +46,21 @@ class Gridding:
         prediction_grid_xy = np.concatenate((x,y), axis = 1)
         
         return prediction_grid_xy
-
-
-    # generate coordinates for output of gridded data  
+ 
     def make_grid(xmin, xmax, ymin, ymax, res):
+        """
+        Generate coordinates for output of gridded data  
+        Inputs:
+            xmin - minimum x extent
+            xmax - maximum x extent
+            ymin - minimum y extent
+            ymax - maximum y extent
+            res - grid cell resolution
+        Outputs:
+            prediction_grid_xy - x,y array of coordinates
+            rows - number of rows 
+            cols - number of columns
+        """ 
         cols = np.rint((xmax - xmin)/res) 
         rows = np.rint((ymax - ymin)/res)  
         rows = rows.astype(int)
@@ -54,9 +73,21 @@ class Gridding:
         
         return prediction_grid_xy, cols, rows
     
-    
-    # grid data by averaging the values within each grid cell
     def grid_data(df, xx, yy, zz, res):
+        """
+        Grid conditioning data
+        Inputs:
+            df - dataframe of conditioning data
+            xx - column name for x coordinates of input data frame
+            yy - column name for y coordinates of input data frame
+            zz - column for z values (or data variable) of input data frame
+            res - grid cell resolution
+        Outputs:
+            df_grid - dataframe of gridded data
+            grid_matrix - matrix of gridded data
+            rows - number of rows in grid_matrix
+            cols - number of columns in grid_matrix
+        """ 
         df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"})
 
         xmin = df['X'].min()
@@ -113,6 +144,15 @@ class Gridding:
 ###################################
 
 def rbf_trend(grid_matrix, smooth_factor, res):
+    """
+    Estimate trend using radial basis functions
+    Inputs:
+        grid_matrix - matrix of gridded conditioning data
+        smooth_factor - regularizing parameter
+        res - grid cell resolution
+    Outputs:
+        trend_rbf - trend estimate
+    """ 
     sigma = np.rint(smooth_factor/res)
     ny, nx = grid_matrix.shape
     rbfi = Rbf(np.where(~np.isnan(grid_matrix))[1],
@@ -136,27 +176,58 @@ def rbf_trend(grid_matrix, smooth_factor, res):
 
 class NearestNeighbor:
 
-    # center data points around grid cell of interest
     def center(arrayx, arrayy, centerx, centery):
+        """
+        Shift data points so that grid cell of interest is at the origin
+        Inputs:
+            arrayx - x coordinates of data
+            arrayy - y coordinates of data
+            centerx - x coordinate of grid cell of interest
+            centery - y coordinate of grid cell of interest
+        Outputs:
+            centered_array - array of coordinates that are shifted with respect to grid cell of interest
+        """ 
         centerx = arrayx - centerx
         centery = arrayy - centery
         centered_array = np.array([centerx, centery])
         
         return centered_array
 
-    # calculate distance between array and center coordinates
     def distance_calculator(centered_array):
+        """
+        Compute distances between coordinates and the origin
+        Inputs:
+            centered_array - array of coordinates
+        Outputs:
+            dist - array of distances between coordinates and origin
+        """ 
         dist = np.linalg.norm(centered_array, axis=0)
         
         return dist
 
-    # calculate angle between array and center coordinates
     def angle_calculator(centered_array):
+        """
+        Compute angles between coordinates and the origin
+        Inputs:
+            centered_array - array of coordinates
+        Outputs:
+            angles - array of angles between coordinates and origin
+        """ 
         angles = np.arctan2(centered_array[0], centered_array[1])
         
         return angles
-
+    
     def nearest_neighbor_search(radius, num_points, loc, data2):
+        """
+        Nearest neighbor octant search
+        Inputs:
+            radius - search radius
+            num_points - number of points to search for
+            loc - coordinates for grid cell of interest
+            data2 - data 
+        Outputs:
+            near - nearest neighbors
+        """ 
         locx = loc[0]
         locy = loc[1]
         data = data2.copy()
@@ -179,10 +250,19 @@ class NearestNeighbor:
         near = smallest[~np.isnan(smallest)].reshape(-1,3) 
         
         return near
-
-
-    # nearest neighbor search when using cluster_SGS. It finds the nearest neighbor cluster value
+    
     def nearest_neighbor_search_cluster(radius, num_points, loc, data2):
+        """
+        Nearest neighbor octant search when doing sgs with clusters
+        Inputs:
+            radius - search radius
+            num_points - number of points to search for
+            loc - coordinates for grid cell of interest
+            data2 - data 
+        Outputs:
+            near - nearest neighbors
+            cluster_number - nearest neighbor cluster number
+        """ 
         locx = loc[0]
         locy = loc[1]
         data = data2.copy()
@@ -208,8 +288,15 @@ class NearestNeighbor:
         
         return near, cluster_number
 
-    # get nearest neighbor secondary data point and coordinates
     def nearest_neighbor_secondary(loc, data2):
+        """
+        Find the neareset neighbor secondary data point to grid cell of interest
+        Inputs:
+            loc - coordinates for grid cell of interest
+            data2 - secondary data
+        Outputs:
+            nearest_second - nearest neighbor value to secondary data
+        """ 
         locx = loc[0]
         locy = loc[1]
         data = data2.copy()
@@ -222,9 +309,21 @@ class NearestNeighbor:
         
         return nearest_second
 
-
-    # find co-located data for co-kriging and co-SGS
-    def find_colocated(df1, xx1, yy1, zz1, df2, xx2, yy2, zz2):     
+    def find_colocated(df1, xx1, yy1, zz1, df2, xx2, yy2, zz2): 
+        """
+        Find colocated data between primary and secondary variables
+        Inputs:
+            df1 - data frame of primary conditioning data
+            xx1 - column name for x coordinates of input data frame for primary data
+            yy1 - column name for y coordinates of input data frame for primary data
+            zz1 - column for z values (or data variable) of input data frame for primary data
+            df2 - data frame of secondary data
+            xx2 - column name for x coordinates of input data frame for secondary data
+            yy2 - column name for y coordinates of input data frame for secondary data
+            zz2 - column for z values (or data variable) of input data frame for secondary data
+        Outputs:
+            df_colocated - data frame of colocated values
+        """ 
         df1 = df1.rename(columns = {xx1: "X", yy1: "Y", zz1: "Z"}) 
         df2 = df2.rename(columns = {xx2: "X", yy2: "Y", zz2: "Z"}) 
         secondary_variable_xy = df2[['X','Y']].values
@@ -312,7 +411,6 @@ def adaptive_partitioning(df_data, xmin, xmax, ymin, ymax, i, max_points, min_le
 
 #########################
 
-
 def make_rotation_matrix(azimuth, major_range, minor_range):
     """
     Make rotation matrix for accommodating anisotropy
@@ -354,7 +452,6 @@ class Covariance:
 
         return c
 
-
     def make_covariance_matrix(coord, vario, rotation_matrix):
         """
         Make covariance matrix showing covariances between each pair of input coordinates
@@ -373,7 +470,6 @@ class Covariance:
         covariance_matrix = c + Covariance.covar(effective_lag, sill) 
 
         return covariance_matrix
-
 
     def make_covariance_array(coord1, coord2, vario, rotation_matrix):
         """
@@ -478,9 +574,7 @@ class Interpolation:
 
         return est_sk, var_sk
 
-
     def okrige(prediction_grid, df, xx, yy, zz, num_points, vario, radius):
-
         """
         Ordinary kriging interpolation
         Inputs:
@@ -557,11 +651,8 @@ class Interpolation:
                 var_ok[z] = 0
 
         return est_ok, var_ok
-
-
-   
+  
     def skrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius):
-
         """
         Sequential Gaussian simulation using simple kriging 
         Inputs:
@@ -628,11 +719,8 @@ class Interpolation:
                                              'Z': [sgs[z]]})], sort=False) 
 
         return sgs
-
-
-    
+   
     def okrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius):
-
         """
         Sequential Gaussian simulation using ordinary kriging 
         Inputs:
@@ -706,7 +794,6 @@ class Interpolation:
 
 
     def cluster_sgs(prediction_grid, df, xx, yy, zz, kk, num_points, df_gamma, radius):
-
         """
         Sequential Gaussian simulation where variogram parameters are different for each k cluster. Uses simple kriging 
         Inputs:
@@ -779,10 +866,6 @@ class Interpolation:
 
         return sgs
 
-
-
-
-    # perform simple collocated cokriging with MM1
     def cokrige_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef):
         """
         Simple collocated cokriging under Markov model 1 assumptions
@@ -799,6 +882,7 @@ class Interpolation:
             num_points - the number of conditioning points to search for
             vario - numpy array of variogram parameters describing the spatial statistics
             radius - search radius
+            corrcoef - correlation coefficient between primary and secondary data
         Outputs:
             est_cokrige - cokriging estimate for each point in coordinate grid
             var_cokrige - variances
@@ -873,8 +957,6 @@ class Interpolation:
 
         return est_cokrige, var_cokrige
 
-
-    # perform cosimulation with MM1
     def cosim_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef):
         """
         Cosimulation under Markov model 1 assumptions
@@ -891,6 +973,7 @@ class Interpolation:
             num_points - the number of conditioning points to search for
             vario - numpy array of variogram parameters describing the spatial statistics
             radius - search radius
+            corrcoef - correlation coefficient between primary and secondary data
         Outputs:
             cosim - cosimulation for each point in coordinate grid
         """
