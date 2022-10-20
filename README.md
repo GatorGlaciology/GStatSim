@@ -1,4 +1,4 @@
-<img src ="GStat-Sim/Images/GatorGlaciologyLogo-01.jpg" width="100" align = "right">
+<img src ="/Images/GatorGlaciologyLogo-01.jpg" width="100" align = "right">
 
 # GStatSim
 GStatSim is a Python package specifically designed for geostatistical interpolation and simulation. It is inspired by open source geostatistical resources such as GeostatsPy and SciKit-GStat. The functions are intended to address the challenges of working with datasets with large crossover errors, non-linear trends, variability in measurement density, and non-stationarity. These tools are part of our ongoing effort to develop and adapt open-access geostatistical functions.
@@ -7,7 +7,7 @@ In its current state, the demos focus on the geostatistical simulation of subgla
 
 We will continuously develop new tools and tutorials to address specific technical challenges in geostatistics. Do you have feedback or suggestions? Specific things that we should account for? Feel free to contact me at emackie@ufl.edu. Our goal is to create tools that are useful and accessible, so we welcome your thoughts and insight.
 
-<img src ="GStat-Sim/Images/GStat-sim_master_figure.png" align = "center">
+<img src ="/Images/GStat-sim_master_figure.png" align = "center">
 
 # Features
 
