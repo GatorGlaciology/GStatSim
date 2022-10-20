@@ -28,30 +28,29 @@ class Gridding:
     # This is the grid of values for simulation
     def prediction_grid(xmin, xmax, ymin, ymax, res):
         cols = np.rint((xmax - xmin + res)/res)
-        rows = np.rint((ymax - ymin + res)/res)  # number of rows and columns
+        rows = np.rint((ymax - ymin + res)/res)  
         x = np.linspace(xmin, xmin+(cols*res), num=int(cols), endpoint=False)
         y = np.linspace(ymin, ymin+(rows*res), num=int(rows), endpoint=False)
-        xx, yy = np.meshgrid(x,y) # make grid
-        yy = np.flip(yy) # flip upside down
-        x = np.reshape(xx, (int(rows)*int(cols), 1)) # shape into array
+        xx, yy = np.meshgrid(x,y) 
+        yy = np.flip(yy) 
+        x = np.reshape(xx, (int(rows)*int(cols), 1))
         y = np.reshape(yy, (int(rows)*int(cols), 1))
-        prediction_grid_xy = np.concatenate((x,y), axis = 1) # combine coordinates
+        prediction_grid_xy = np.concatenate((x,y), axis = 1)
         
         return prediction_grid_xy
 
 
     # generate coordinates for output of gridded data  
     def make_grid(xmin, xmax, ymin, ymax, res):
-        # number of rows and columns
         cols = np.rint((xmax - xmin)/res) 
         rows = np.rint((ymax - ymin)/res)  
         rows = rows.astype(int)
         cols = cols.astype(int)
-        x = np.arange(xmin,xmax,res); y = np.arange(ymin,ymax,res) # make arrays
-        xx, yy = np.meshgrid(x,y) # make grid
-        x = np.reshape(xx, (int(rows)*int(cols), 1)) # shape into array
+        x = np.arange(xmin,xmax,res); y = np.arange(ymin,ymax,res)
+        xx, yy = np.meshgrid(x,y) 
+        x = np.reshape(xx, (int(rows)*int(cols), 1)) 
         y = np.reshape(yy, (int(rows)*int(cols), 1))
-        prediction_grid_xy = np.concatenate((x,y), axis = 1) # combine coordinates
+        prediction_grid_xy = np.concatenate((x,y), axis = 1)
         
         return prediction_grid_xy, cols, rows
     
@@ -68,9 +67,9 @@ class Gridding:
         # make array of grid coordinates
         grid_coord, cols, rows = Gridding.make_grid(xmin, xmax, ymin, ymax, res) 
 
-        df = df[['X','Y','Z']] # remove any unwanted columns
-        np_data = df.to_numpy() # convert to numpy
-        np_resize = np.copy(np_data) # copy data
+        df = df[['X','Y','Z']] 
+        np_data = df.to_numpy() 
+        np_resize = np.copy(np_data) 
         origin = np.array([xmin,ymin])
         resolution = np.array([res,res])
         
@@ -78,7 +77,7 @@ class Gridding:
         np_resize[:,:2] = np.rint((np_resize[:,:2]-origin)/resolution) 
 
         grid_sum = np.zeros((rows,cols))
-        grid_count = np.copy(grid_sum) # make counter array
+        grid_count = np.copy(grid_sum) 
 
         for i in range(np_data.shape[0]):
             xindex = np.int32(np_resize[i,1])
@@ -88,21 +87,21 @@ class Gridding:
                 continue
 
             grid_sum[xindex,yindex] = np_data[i,2] + grid_sum[xindex,yindex]
-            grid_count[xindex,yindex] = 1 + grid_count[xindex,yindex] # add counter
+            grid_count[xindex,yindex] = 1 + grid_count[xindex,yindex]
 
 
-        np.seterr(invalid='ignore') # ignore erros when dividing by zero (will assign NaN value)
-        grid_matrix = np.divide(grid_sum, grid_count) # divide sum by counter to get average within each grid cell
-        grid_array = np.reshape(grid_matrix,[rows*cols]) # reshape to array
-        grid_sum = np.reshape(grid_sum,[rows*cols]) # reshape to array
-        grid_count = np.reshape(grid_count,[rows*cols]) # reshape to array
+        np.seterr(invalid='ignore') 
+        grid_matrix = np.divide(grid_sum, grid_count) 
+        grid_array = np.reshape(grid_matrix,[rows*cols]) 
+        grid_sum = np.reshape(grid_sum,[rows*cols]) 
+        grid_count = np.reshape(grid_count,[rows*cols]) 
 
         # make dataframe    
         grid_total = np.array([grid_coord[:,0], grid_coord[:,1], 
                                grid_sum, grid_count, grid_array])    
         df_grid = pd.DataFrame(grid_total.T, 
-                               columns = ['X', 'Y', 'Sum', 'Count', 'Z'])  # make dataframe of simulated data
-        grid_matrix = np.flipud(grid_matrix) # flip upside down   
+                               columns = ['X', 'Y', 'Sum', 'Count', 'Z']) 
+        grid_matrix = np.flipud(grid_matrix) 
         
         return df_grid, grid_matrix, rows, cols
 
@@ -124,7 +123,7 @@ def rbf_trend(grid_matrix, smooth_factor, res):
     yi = np.arange(nx)
     xi = np.arange(ny)
     xi,yi = np.meshgrid(xi, yi)
-    trend_rbf = rbfi(xi, yi)   # interpolated values
+    trend_rbf = rbfi(xi, yi)   
     
     return trend_rbf
 
@@ -163,22 +162,21 @@ class NearestNeighbor:
         data = data2.copy()
         centered_array = NearestNeighbor.center(data['X'].values, data['Y'].values, 
                                 locx, locy)
-        data["dist"] = NearestNeighbor.distance_calculator(centered_array) # compute distance from grid cell of interest
+        data["dist"] = NearestNeighbor.distance_calculator(centered_array) 
         data["angles"] = NearestNeighbor.angle_calculator(centered_array)
-        data = data[data.dist < radius] # delete points outside radius
-        data = data.sort_values('dist', ascending = True) # sort array by distances
+        data = data[data.dist < radius] 
+        data = data.sort_values('dist', ascending = True)
         bins = [-math.pi, -3*math.pi/4, -math.pi/2, -math.pi/4, 0, 
-                math.pi/4, math.pi/2, 3*math.pi/4, math.pi] # break into 8 octants
-        data["Oct"] = pd.cut(data.angles, bins = bins, labels = list(range(8))) # octant search
-        # number of points to look for in each octant, if not fully divisible by 8, round down
+                math.pi/4, math.pi/2, 3*math.pi/4, math.pi] 
+        data["Oct"] = pd.cut(data.angles, bins = bins, labels = list(range(8)))
         oct_count = num_points // 8
-        smallest = np.ones(shape=(num_points, 3)) * np.nan # initialize nan array
+        smallest = np.ones(shape=(num_points, 3)) * np.nan
 
         for i in range(8):
-            octant = data[data.Oct == i].iloc[:oct_count][['X','Y','Z']].values # get smallest distance points for each octant
+            octant = data[data.Oct == i].iloc[:oct_count][['X','Y','Z']].values 
             for j, row in enumerate(octant):
-                smallest[i*oct_count+j,:] = row # concatenate octants
-        near = smallest[~np.isnan(smallest)].reshape(-1,3) # remove nans
+                smallest[i*oct_count+j,:] = row 
+        near = smallest[~np.isnan(smallest)].reshape(-1,3) 
         
         return near
 
@@ -190,24 +188,23 @@ class NearestNeighbor:
         data = data2.copy()
         centered_array = NearestNeighbor.center(data['X'].values, data['Y'].values, 
                                 locx, locy)
-        data["dist"] = NearestNeighbor.distance_calculator(centered_array) # compute distance from grid cell of interest
+        data["dist"] = NearestNeighbor.distance_calculator(centered_array)
         data["angles"] = NearestNeighbor.angle_calculator(centered_array)
-        data = data[data.dist < radius] # delete points outside radius
-        data = data.sort_values('dist', ascending = True) # sort array by distances
-        data = data.reset_index() # reset index so that the top index is 0 (so we can extract nearest neighbor K value)
-        cluster_number = data.K[0] # get nearest neighbor cluster value
+        data = data[data.dist < radius] 
+        data = data.sort_values('dist', ascending = True)
+        data = data.reset_index() 
+        cluster_number = data.K[0] 
         bins = [-math.pi, -3*math.pi/4, -math.pi/2, -math.pi/4, 0, 
-                math.pi/4, math.pi/2, 3*math.pi/4, math.pi] # break into 8 octants
-        data["Oct"] = pd.cut(data.angles, bins = bins, labels = list(range(8))) # octant search
-        # number of points to look for in each octant, if not fully divisible by 8, round down
+                math.pi/4, math.pi/2, 3*math.pi/4, math.pi]
+        data["Oct"] = pd.cut(data.angles, bins = bins, labels = list(range(8))) 
         oct_count = num_points // 8
         smallest = np.ones(shape=(num_points, 3)) * np.nan
 
         for i in range(8):
-            octant = data[data.Oct == i].iloc[:oct_count][['X','Y','Z']].values # get smallest distance points for each octant
+            octant = data[data.Oct == i].iloc[:oct_count][['X','Y','Z']].values
             for j, row in enumerate(octant):
-                smallest[i*oct_count+j,:] = row # concatenate octants
-        near = smallest[~np.isnan(smallest)].reshape(-1,3) # remove nans
+                smallest[i*oct_count+j,:] = row 
+        near = smallest[~np.isnan(smallest)].reshape(-1,3) 
         
         return near, cluster_number
 
@@ -218,22 +215,22 @@ class NearestNeighbor:
         data = data2.copy()
         centered_array = NearestNeighbor.center(data['X'].values, data['Y'].values, 
                                 locx, locy)
-        data["dist"] = NearestNeighbor.distance_calculator(centered_array) # compute distance from grid cell of interest
-        data = data.sort_values('dist', ascending = True) # sort array by distances
-        data = data.reset_index() # reset index
-        nearest_second = data.iloc[0][['X','Y','Z']].values # get coordinates and value of nearest neighbor
+        data["dist"] = NearestNeighbor.distance_calculator(centered_array)
+        data = data.sort_values('dist', ascending = True) 
+        data = data.reset_index() 
+        nearest_second = data.iloc[0][['X','Y','Z']].values 
         
         return nearest_second
 
 
     # find co-located data for co-kriging and co-SGS
     def find_colocated(df1, xx1, yy1, zz1, df2, xx2, yy2, zz2):     
-        df1 = df1.rename(columns = {xx1: "X", yy1: "Y", zz1: "Z"}) # rename columns
+        df1 = df1.rename(columns = {xx1: "X", yy1: "Y", zz1: "Z"}) 
         df2 = df2.rename(columns = {xx2: "X", yy2: "Y", zz2: "Z"}) 
         secondary_variable_xy = df2[['X','Y']].values
-        secondary_variable_tree = KDTree(secondary_variable_xy) # make KDTree
+        secondary_variable_tree = KDTree(secondary_variable_xy) 
         primary_variable_xy = df1[['X','Y']].values
-        nearest_indices = np.zeros(len(primary_variable_xy)) # initialize array of nearest neighbor indices
+        nearest_indices = np.zeros(len(primary_variable_xy)) 
 
         # query search tree
         for i in range(0,len(primary_variable_xy)):
@@ -258,10 +255,10 @@ def adaptive_partitioning(df_data, xmin, xmax, ymin, ymax, i, max_points, min_le
     Rercursively split clusters until they are all below max_points, but don't go smaller than min_length
     Inputs:
         df_data - DataFrame with X, Y, and K (cluster id)
-        XMIN - min x value of this partion
-        XMAX - max x value of this partion
-        YMIN - min y value of this partion
-        YMAX - max y value of this partion
+        xmin - min x value of this partion
+        xmax - max x value of this partion
+        ymin - min y value of this partion
+        ymax - max y value of this partion
         i - keeps track of total calls to this function
         max_points - all clusters will be "quartered" until points below this
         min_length - minimum side length of sqaures, preference over max_points
@@ -316,9 +313,17 @@ def adaptive_partitioning(df_data, xmin, xmax, ymin, ymax, i, max_points, min_le
 #########################
 
 
-# make rotation matrix (azimuth = major axis direction)
 def make_rotation_matrix(azimuth, major_range, minor_range):
-    theta = (azimuth / 180.0) * np.pi # convert to radians
+    """
+    Make rotation matrix for accommodating anisotropy
+    Inputs:
+        azimuth - angle (in degrees from horizontal) of axis of orientation
+        major_range - range parameter of variogram in major direction, or azimuth
+        minor_range - range parameter of variogram in minor direction, or orthogonal to azimuth
+    Outputs:
+        rotation_matrix - 2x2 rotation matrix used to perform coordinate transformations
+    """
+    theta = (azimuth / 180.0) * np.pi 
     
     rotation_matrix = np.dot(
         np.array([[np.cos(theta), -np.sin(theta)],
@@ -336,36 +341,58 @@ def make_rotation_matrix(azimuth, major_range, minor_range):
 
 class Covariance:
 
-    # covariance function definition. h is effective lag (where range is 1)
     def covar(effective_lag, sill):
-        c = 1 - sill + np.exp(-3 * effective_lag) # Exponential covariance function
+        """
+        Compute covariance using exponential covariance model
+        Inputs:
+            effective_lag - lag distance that is normalized to a range of 1
+            sill - sill of variogram
+        Outputs:
+            c - covariance
+        """
+        c = 1 - sill + np.exp(-3 * effective_lag) 
 
         return c
 
 
-    # covariance matrix (n x n matrix) for covariance between each pair of coordinates.
     def make_covariance_matrix(coord, vario, rotation_matrix):
-        # unpack variogram parameters
+        """
+        Make covariance matrix showing covariances between each pair of input coordinates
+        Inputs:
+            coord - coordinates of data points
+            vario - array of variogram parameters
+            rotation_matrix - rotation matrix used to perform coordinate transformations
+        Outputs:
+            covariance_matrix - nxn matrix of covariance between n points
+        """
         nug = vario[1]
         sill = vario[4] - nug                               
-        c = -nug # nugget effect is made negative because we're calculating covariance instead of variance
+        c = -nug 
         mat = np.matmul(coord, rotation_matrix)
-        effective_lag = pairwise_distances(mat,mat) # compute distances 
-        covariance_matrix = c + Covariance.covar(effective_lag, sill) # (effective range = 1) compute covariance
+        effective_lag = pairwise_distances(mat,mat) 
+        covariance_matrix = c + Covariance.covar(effective_lag, sill) 
 
         return covariance_matrix
 
 
-    # n x 1 covariance array for covariance between conditioning data and uknown
     def make_covariance_array(coord1, coord2, vario, rotation_matrix):
-        # unpack variogram parameters
+        """
+        Make covariance array showing covariances between each data points and grid cell of interest
+        Inputs:
+            coord1 - coordinates of n data points
+            coord2 - coordinates of grid cell of interest (i.e. grid cell being simulated) that is repeated n times
+            vario - array of variogram parameters
+            rotation_matrix - rotation matrix used to perform coordinate transformations
+        Outputs:
+            covariance_array - nx1 array of covariance between n points and grid cell of interest
+        """
         nug = vario[1]
         sill = vario[4] - nug                          
-        c = -nug # nugget effect is made negative because we're calculating covariance instead of variance
+        c = -nug 
         mat1 = np.matmul(coord1, rotation_matrix) 
         mat2 = np.matmul(coord2.reshape(-1,2), rotation_matrix) 
-        effective_lag = np.sqrt(np.square(mat1 - mat2).sum(axis=1)) # calculate distance
-        covariance_array = c + Covariance.covar(effective_lag, sill) # calculate covariances
+        effective_lag = np.sqrt(np.square(mat1 - mat2).sum(axis=1))
+        covariance_array = c + Covariance.covar(effective_lag, sill)
 
         return covariance_array
 
@@ -378,38 +405,43 @@ class Covariance:
 class Interpolation: 
 
     def skrige(prediction_grid, df, xx, yy, zz, num_points, vario, radius):
-
-        """Simple kriging interpolation
-        :param prediction_grid: x,y coordinate numpy array of prediction grid, or grid cells that will be estimated
-        :df: data frame of input data
-        :xx: column name for x coordinates of input data frame
-        :yy: column name for y coordinates of input data frame
-        :data: column name for the data variable (in this case, bed elevation) of the input data frame
-        :num_points: the number of conditioning points to search for
-        :vario: variogram parameters describing the spatial statistics
-        :radius: search radius
         """
+        Simple kriging interpolation
+        Inputs:
+            prediction_grid - x,y coordinate numpy array of prediction grid, or grid cells that will be estimated
+            df - data frame of conditioning data
+            xx - column name for x coordinates of input data frame
+            yy - column name for y coordinates of input data frame
+            zz - column for z values (or data variable) of input data frame
+            num_points - the number of conditioning points to search for
+            vario - numpy array of variogram parameters describing the spatial statistics
+            radius - search radius
+        Outputs:
+            est_sk - simple kriging estimate for each coordinate in prediction_grid
+            var_sk - simple kriging variance 
+        """
+        
         # unpack variogram parameters
         azimuth = vario[0]
         major_range = vario[2]
         minor_range = vario[3]
-        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) # rotation matrix for scaling distance based on ranges and anisotropy
+        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) 
 
-        df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"}) # rename header names for consistency with other functions   
-        mean_1 = df['Z'].mean() # mean of input data
-        var_1 = np.var(df['Z']); # variance of input data 
-        est_sk = np.zeros(shape=len(prediction_grid)) # preallocate space for mean and variance
+        df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"})   
+        mean_1 = df['Z'].mean() 
+        var_1 = df['Z'].var()
+        est_sk = np.zeros(shape=len(prediction_grid)) 
         var_sk = np.zeros(shape=len(prediction_grid))
 
         # for each coordinate in the prediction grid
         for z, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values,axis = 1)
-            if np.sum(test_idx==2)==0: # not our hard data
+            if np.sum(test_idx==2)==0:
                 
                 # gather nearest points within radius
                 nearest = NearestNeighbor.nearest_neighbor_search(radius, num_points, 
                                                   prediction_grid[z], df[['X','Y','Z']])
-                norm_data_val = nearest[:,-1] # format nearest point data values matrix
+                norm_data_val = nearest[:,-1] 
                 norm_data_val = norm_data_val.reshape(len(norm_data_val),1)
                 norm_data_val = norm_data_val.T
                 xy_val = nearest[:, :-1]   
@@ -431,7 +463,6 @@ class Interpolation:
                 k_weights, res, rank, s = np.linalg.lstsq(covariance_matrix, 
                                                           covariance_array, rcond = None)
                 
-                # to avoid underestimating variance, calculate weights for variance estimation separately
                 vario2 = [vario[0], vario[1], vario[2], vario[3], var_1]
                 covariance_array2 = Covariance.make_covariance_array(xy_val, 
                                                          np.tile(prediction_grid[z], new_num_pts), 
@@ -448,44 +479,44 @@ class Interpolation:
         return est_sk, var_sk
 
 
-    ###########################
-
-    # Ordinary Kriging Function
-
-    ###########################
-
     def okrige(prediction_grid, df, xx, yy, zz, num_points, vario, radius):
 
-        """Ordinary kriging interpolation
-        :param prediction_grid: x,y coordinate numpy array of prediction grid, or grid cells that will be estimated
-        :df: data frame of input data
-        :xx: column name for x coordinates of input data frame
-        :yy: column name for y coordinates of input data frame
-        :data: column name for the data variable (in this case, bed elevation) of the input data frame
-        :num_points: the number of conditioning points to search for
-        :vario: variogram parameters describing the spatial statistics
+        """
+        Ordinary kriging interpolation
+        Inputs:
+            prediction_grid - x,y coordinate numpy array of prediction grid, or grid cells that will be estimated
+            df - data frame of conditioning data
+            xx - column name for x coordinates of input data frame
+            yy - column name for y coordinates of input data frame
+            zz - column for z values (or data variable) of input data frame
+            num_points - the number of conditioning points to search for
+            vario - numpy array of variogram parameters describing the spatial statistics
+            radius - search radius
+        Outputs:
+            est_ok - ordinary kriging estimate for each coordinate in prediction_grid
+            var_ok - ordinary kriging variance 
         """
 
         # unpack variogram parameters
         azimuth = vario[0]
         major_range = vario[2]
         minor_range = vario[3]
-        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) # rotation matrix for scaling distance based on ranges and anisotropy
+        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) 
 
-        df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"}) # rename header names for consistency with other functions    
-        var_1 = np.var(df['Z']); # variance of data     
-        est_ok = np.zeros(shape=len(prediction_grid)) # preallocate space for mean and variance
+        df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"}) 
+        var_1 = np.var(df['Z'])    
+        est_ok = np.zeros(shape=len(prediction_grid)) 
         var_ok = np.zeros(shape=len(prediction_grid))
 
         for z, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values,axis = 1)
-            if np.sum(test_idx==2)==0: # not our hard data
+            if np.sum(test_idx==2)==0: 
                 
                 # find nearest data points
                 nearest = NearestNeighbor.nearest_neighbor_search(radius, num_points, 
                                                   prediction_grid[z], df[['X','Y','Z']])    
-                norm_data_val = nearest[:,-1] # format matrix of nearest data values
-                local_mean = np.mean(norm_data_val) # compute the local mean
+                norm_data_val = nearest[:,-1] 
+                local_mean = np.mean(norm_data_val) 
                 norm_data_val = norm_data_val.reshape(len(norm_data_val),1)
                 norm_data_val = norm_data_val.T
                 xy_val = nearest[:,:-1]
@@ -504,22 +535,22 @@ class Interpolation:
                 covariance_array[0:new_num_pts] = Covariance.make_covariance_array(xy_val, 
                                                                         np.tile(prediction_grid[z], new_num_pts), 
                                                                         vario, rotation_matrix)
-                covariance_array[new_num_pts] = 1 # unbiasedness constraint
+                covariance_array[new_num_pts] = 1 
                 covariance_matrix.reshape(((new_num_pts+1)), ((new_num_pts+1)))
                 k_weights, res, rank, s = np.linalg.lstsq(covariance_matrix, 
-                                                          covariance_array, rcond = None) # Calculate Kriging Weights   
+                                                          covariance_array, rcond = None) 
                 
-                # to avoid underestimating variance, calculate weights for variance estimation separately
+
                 vario2 = [vario[0], vario[1], vario[2], vario[3], var_1]
                 covariance_array2 = np.zeros(shape=(new_num_pts+1))
-                covariance_array2[new_num_pts] = 1 # unbiasedness constraint
+                covariance_array2[new_num_pts] = 1 
                 covariance_array2[0:new_num_pts] = Covariance.make_covariance_array(xy_val, 
                                                          np.tile(prediction_grid[z], new_num_pts), 
                                                          vario2, rotation_matrix)
                 k_weights2, res, rank, s = np.linalg.lstsq(covariance_matrix, 
                                                           covariance_array2, rcond = None)
                 
-                est_ok[z] = local_mean + np.sum(k_weights[0:new_num_pts]*(norm_data_val[:] - local_mean)) # get estimates
+                est_ok[z] = local_mean + np.sum(k_weights[0:new_num_pts]*(norm_data_val[:] - local_mean)) 
                 var_ok[z] = var_1 - np.sum(k_weights2[0:new_num_pts]*covariance_array2[0:new_num_pts])
             else:
                 est_ok[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
@@ -528,47 +559,51 @@ class Interpolation:
         return est_ok, var_ok
 
 
-    # sequential Gaussian simulation using ordinary kriging
+   
     def skrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius):
 
-        """Sequential Gaussian simulation
-        :param prediction_grid: x,y coordinate numpy array of prediction grid, or grid cells that will be estimated
-        :df: data frame of input data
-        :xx: column name for x coordinates of input data frame
-        :yy: column name for y coordinates of input data frame
-        :df: column name for the data variable (in this case, bed elevation) of the input data frame
-        :num_points: the number of conditioning points to search for
-        :vario: variogram parameters describing the spatial statistics
+        """
+        Sequential Gaussian simulation using simple kriging 
+        Inputs:
+            prediction_grid - x,y coordinate numpy array of prediction grid, or grid cells that will be estimated
+            df - data frame of conditioning data
+            xx - column name for x coordinates of input data frame
+            yy - column name for y coordinates of input data frame
+            zz - column for z values (or data variable) of input data frame
+            num_points - the number of conditioning points to search for
+            vario - numpy array of variogram parameters describing the spatial statistics
+            radius - search radius
+        Outputs:
+            sgs - simulated value for each coordinate in prediction_grid
         """
 
         # unpack variogram parameters
         azimuth = vario[0]
         major_range = vario[2]
         minor_range = vario[3]
-        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) # rotation matrix for scaling distance based on ranges and anisotropy
+        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) 
 
-        # rename header names for consistency with other functions
         df = df.rename(columns = {xx: 'X', yy: 'Y', zz: 'Z'})
-        xyindex = np.arange(len(prediction_grid)) # generate random array for simulation order
+        xyindex = np.arange(len(prediction_grid)) 
         random.shuffle(xyindex)
-        mean_1 = df['Z'].mean() # mean of input data
-        var_1 = df['Z'].var() # variance of data   
-        sgs = np.zeros(shape=len(prediction_grid))  # preallocate space for simulation
+        mean_1 = df['Z'].mean() 
+        var_1 = df['Z'].var()   
+        sgs = np.zeros(shape=len(prediction_grid)) 
 
         for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
-            z = xyindex[idx] # get coordinate index
+            z = xyindex[idx] 
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values, axis=1)
-            if np.sum(test_idx==2)==0: # not our hard data
+            if np.sum(test_idx==2)==0: 
                 
                 # get nearest neighbors
                 nearest = NearestNeighbor.nearest_neighbor_search(radius, num_points, 
                                                   prediction_grid[z], df[['X','Y','Z']])  
-                norm_data_val = nearest[:,-1]   # store data values in new array
-                xy_val = nearest[:,:-1]   # store X,Y pair values in new array
+                norm_data_val = nearest[:,-1]   
+                xy_val = nearest[:,:-1]   
                 new_num_pts = len(nearest) 
 
                 # left hand side (covariance between data)
-                covariance_matrix = np.zeros(shape=((new_num_pts, new_num_pts))) # left hand side (covariance between data)
+                covariance_matrix = np.zeros(shape=((new_num_pts, new_num_pts))) 
                 covariance_matrix = Covariance.make_covariance_matrix(xy_val, vario, rotation_matrix)
 
                 # Set up Right Hand Side (covariance between data and unknown)
@@ -579,190 +614,216 @@ class Interpolation:
                                                          vario, rotation_matrix)
                 covariance_matrix.reshape(((new_num_pts)), ((new_num_pts)))
                 k_weights, res, rank, s = np.linalg.lstsq(covariance_matrix, 
-                                                          covariance_array, rcond = None) # Calculate Kriging Weights
+                                                          covariance_array, rcond = None) 
                 # get estimates
-                est = mean_1 + np.sum(k_weights*(norm_data_val - mean_1)) # simple kriging mean
-                var = var_1 - np.sum(k_weights*covariance_array) # simple kriging variance
-                var = np.absolute(var) # make sure variances are non-negative
-                sgs[z] = np.random.normal(est,math.sqrt(var),1) # simulate by randomly sampling a value
+                est = mean_1 + np.sum(k_weights*(norm_data_val - mean_1)) 
+                var = var_1 - np.sum(k_weights*covariance_array) 
+                var = np.absolute(var) 
+                sgs[z] = np.random.normal(est,math.sqrt(var),1) 
             else:
                 sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
 
-            coords = prediction_grid[z:z+1,:] # update the conditioning data
+            coords = prediction_grid[z:z+1,:] 
             df = pd.concat([df,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 
-                                             'Z': [sgs[z]]})], sort=False) # add new points by concatenating dataframes 
+                                             'Z': [sgs[z]]})], sort=False) 
 
         return sgs
 
 
-    # sequential Gaussian simulation using ordinary kriging
+    
     def okrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius):
 
-        """Sequential Gaussian simulation
-        :param prediction_grid: x,y coordinate numpy array of prediction grid, or grid cells that will be estimated
-        :df: data frame of input data
-        :xx: column name for x coordinates of input data frame
-        :yy: column name for y coordinates of input data frame
-        :df: column name for the data variable (in this case, bed elevation) of the input data frame
-        :num_points: the number of conditioning points to search for
-        :vario: variogram parameters describing the spatial statistics
+        """
+        Sequential Gaussian simulation using ordinary kriging 
+        Inputs:
+            prediction_grid - x,y coordinate numpy array of prediction grid, or grid cells that will be estimated
+            df - data frame of conditioning data
+            xx - column name for x coordinates of input data frame
+            yy - column name for y coordinates of input data frame
+            zz - column for z values (or data variable) of input data frame
+            num_points - the number of conditioning points to search for
+            vario - numpy array of variogram parameters describing the spatial statistics
+            radius - search radius
+        Outputs:
+            sgs - simulated value for each coordinate in prediction_grid
         """
 
         # unpack variogram parameters
         azimuth = vario[0]
         major_range = vario[2]
         minor_range = vario[3]
-        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) # rotation matrix for scaling distance based on ranges and anisotropy
+        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) 
 
-        df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"}) # rename header names for consistency with other functions
-        xyindex = np.arange(len(prediction_grid)) # generate random array for simulation order
+        df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"}) 
+        xyindex = np.arange(len(prediction_grid)) 
         random.shuffle(xyindex)
-        var_1 = np.var(df["Z"].values) # variance of data       
-        sgs = np.zeros(shape=len(prediction_grid))  # preallocate space for simulation  
+        var_1 = np.var(df["Z"].values)      
+        sgs = np.zeros(shape=len(prediction_grid))  
 
         for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
-            z = xyindex[idx] # get coordinate index
+            z = xyindex[idx] 
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values,axis = 1)
-            if np.sum(test_idx==2)==0: # not our hard data
+            if np.sum(test_idx==2)==0:
                 
                 # gather nearest neighbor points
                 nearest = NearestNeighbor.nearest_neighbor_search(radius, num_points, 
                                                   prediction_grid[z], df[['X','Y','Z']]) 
-                norm_data_val = nearest[:,-1]   # store data values in new array
-                xy_val = nearest[:,:-1]   # store X,Y pair values in new array
-                local_mean = np.mean(norm_data_val) # compute the local mean
+                norm_data_val = nearest[:,-1]   
+                xy_val = nearest[:,:-1]   
+                local_mean = np.mean(norm_data_val) 
                 new_num_pts = len(nearest) 
 
-                covariance_matrix = np.zeros(shape=((new_num_pts+1, new_num_pts+1))) # left hand side (covariance between data)
+                # covariance between data
+                covariance_matrix = np.zeros(shape=((new_num_pts+1, new_num_pts+1))) 
                 covariance_matrix[0:new_num_pts,0:new_num_pts] = Covariance.make_covariance_matrix(xy_val, 
                                                                                         vario, rotation_matrix)
                 covariance_matrix[new_num_pts,0:new_num_pts] = 1
                 covariance_matrix[0:new_num_pts,new_num_pts] = 1
 
-                # Set up Right Hand Side (covariance between data and unknown)
+                # covariance between data and unknown
                 covariance_array = np.zeros(shape=(new_num_pts+1))
                 k_weights = np.zeros(shape=(new_num_pts+1))
                 covariance_array[0:new_num_pts] = Covariance.make_covariance_array(xy_val, 
                                                                         np.tile(prediction_grid[z], new_num_pts), 
                                                                         vario, rotation_matrix)
-                covariance_array[new_num_pts] = 1 # unbiasedness constraint
+                covariance_array[new_num_pts] = 1 
                 covariance_matrix.reshape(((new_num_pts+1)), ((new_num_pts+1)))
 
                 k_weights, res, rank, s = np.linalg.lstsq(covariance_matrix, 
-                                                          covariance_array, rcond = None) # Calculate Kriging Weights           
-                est = local_mean + np.sum(k_weights[0:new_num_pts]*(norm_data_val - local_mean)) # kriging mean
-                var = var_1 - np.sum(k_weights[0:new_num_pts]*covariance_array[0:new_num_pts]) # kriging variance
-                var = np.absolute(var) # make sure variances are non-negative
+                                                          covariance_array, rcond = None)           
+                est = local_mean + np.sum(k_weights[0:new_num_pts]*(norm_data_val - local_mean)) 
+                var = var_1 - np.sum(k_weights[0:new_num_pts]*covariance_array[0:new_num_pts]) 
+                var = np.absolute(var)
 
-                sgs[z] = np.random.normal(est,math.sqrt(var),1) # simulate by randomly sampling a value
+                sgs[z] = np.random.normal(est,math.sqrt(var),1) 
             else:
                 sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]] 
 
-            # update the conditioning data
             coords = prediction_grid[z:z+1,:]
-            df = pd.concat([df,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 'Z': [sgs[z]]})], sort=False) # add new points by concatenating dataframes 
+            df = pd.concat([df,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 'Z': [sgs[z]]})], sort=False) 
 
         return sgs
 
-# SGS with multiple clusters
+
     def cluster_sgs(prediction_grid, df, xx, yy, zz, kk, num_points, df_gamma, radius):
 
-        """Sequential Gaussian simulation
-        :param prediction_grid: x,y coordinate numpy array of prediction grid, or grid cells that will be estimated
-        :df: data frame of input data
-        :xx: column name for x coordinates of input data frame
-        :yy: column name for y coordinates of input data frame
-        :zz: y variable
-        :kk: k-means cluster number
-        :df: column name for the data variable (in this case, bed elevation) of the input data frame
-        :num_points: the number of conditioning points to search for
-        :df_gamma: dataframe of variogram parameters describing the spatial statistics for each cluster
-        """   
+        """
+        Sequential Gaussian simulation where variogram parameters are different for each k cluster. Uses simple kriging 
+        Inputs:
+            prediction_grid - x,y coordinate numpy array of prediction grid, or grid cells that will be estimated
+            df - data frame of conditioning data
+            xx - column name for x coordinates of input data frame
+            yy - column name for y coordinates of input data frame
+            zz - column for z values (or data variable) of input data frame
+            kk - column of k cluster numbers for each point
+            num_points - the number of conditioning points to search for
+            df_gamma - dataframe with variogram parameters for each cluster
+            radius - search radius
+        Outputs:
+            sgs - simulated value for each coordinate in prediction_grid
+        """ 
 
-        df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z", kk: "K"}) # rename header names for consistency with other functions 
-        xyindex = np.arange(len(prediction_grid)) # generate random array for simulation order
+        df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z", kk: "K"})  
+        xyindex = np.arange(len(prediction_grid)) 
         random.shuffle(xyindex)
-        mean_1 = np.average(df["Z"].values) # mean of input data
-        var_1 = np.var(df["Z"].values); # variance of data       
-        sgs = np.zeros(shape=len(prediction_grid))  # preallocate space for simulation
+        mean_1 = np.average(df["Z"].values) 
+        var_1 = np.var(df["Z"].values);       
+        sgs = np.zeros(shape=len(prediction_grid)) 
 
         for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
-            z = xyindex[idx] # get coordinate index
+            z = xyindex[idx] 
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values,axis = 1)
-            if np.sum(test_idx==2)==0: # not our hard data
+            if np.sum(test_idx==2)==0: 
                 
                 # gather nearest neighbor points and K cluster value
                 nearest, cluster_number = NearestNeighbor.nearest_neighbor_search_cluster(radius, 
                                                                                           num_points, 
                                                                                           prediction_grid[z],
                                                                                           df[['X','Y','Z','K']])  
-                vario = df_gamma.Variogram[cluster_number] # define variogram parameters using cluster value
-                norm_data_val = nearest[:,-1]   # store data values in new array
-                xy_val = nearest[:,:-1]   # store X,Y pair values in new array
+                vario = df_gamma.Variogram[cluster_number] 
+                norm_data_val = nearest[:,-1]   
+                xy_val = nearest[:,:-1]   
 
                 # unpack variogram parameters
                 azimuth = vario[0]
                 major_range = vario[2]
                 minor_range = vario[3]
-                rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) # rotation matrix for scaling distance based on ranges and anisotropy
+                rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) 
                 new_num_pts = len(nearest)
 
-                covariance_matrix = np.zeros(shape=((new_num_pts, new_num_pts))) # left hand side (covariance between data)
+                # covariance between data
+                covariance_matrix = np.zeros(shape=((new_num_pts, new_num_pts))) 
                 covariance_matrix[0:new_num_pts,0:new_num_pts] = Covariance.make_covariance_matrix(xy_val, 
                                                                                                    vario, 
                                                                                                    rotation_matrix) 
-
-                covariance_array = np.zeros(shape=(new_num_pts)) # Set up Right Hand Side (covariance between data and unknown)
+                
+                # covariance between data and unknown
+                covariance_array = np.zeros(shape=(new_num_pts)) 
                 k_weights = np.zeros(shape=(new_num_pts))
                 covariance_array = Covariance.make_covariance_array(xy_val, np.tile(prediction_grid[z], new_num_pts), 
                                                                     vario, rotation_matrix)
                 covariance_matrix.reshape(((new_num_pts)), ((new_num_pts)))
                 k_weights, res, rank, s = np.linalg.lstsq(covariance_matrix, covariance_array, rcond = None) 
-                est = mean_1 + np.sum(k_weights*(norm_data_val - mean_1)) # simple kriging mean
-                var = var_1 - np.sum(k_weights*covariance_array) # simple kriging variance
-                var = np.absolute(var) # make sure variances are non-negative
+                est = mean_1 + np.sum(k_weights*(norm_data_val - mean_1)) 
+                var = var_1 - np.sum(k_weights*covariance_array)
+                var = np.absolute(var) 
 
-                sgs[z] = np.random.normal(est,math.sqrt(var),1) # simulate by randomly sampling a value
+                sgs[z] = np.random.normal(est,math.sqrt(var),1) 
             else:
                 sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
                 cluster_number = df['K'].values[np.where(test_idx==2)[0][0]]
 
-            coords = prediction_grid[z:z+1,:] # update the conditioning data
+            coords = prediction_grid[z:z+1,:] 
             df = pd.concat([df,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 
                                              'Z': [sgs[z]], 'K': [cluster_number]})], sort=False)
 
         return sgs
 
 
-    ###########################
 
-    # Multivariate
-
-    ###########################
 
     # perform simple collocated cokriging with MM1
     def cokrige_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef):
-
+        """
+        Simple collocated cokriging under Markov model 1 assumptions
+        Inputs:
+            prediction_grid - x,y coordinate numpy array of prediction grid, or grid cells that will be estimated
+            df1 - data frame of primary conditioning data
+            xx1 - column name for x coordinates of input data frame for primary data
+            yy1 - column name for y coordinates of input data frame for primary data
+            zz1 - column for z values (or data variable) of input data frame for primary data
+            df2 - data frame of secondary data
+            xx2 - column name for x coordinates of input data frame for secondary data
+            yy2 - column name for y coordinates of input data frame for secondary data
+            zz2 - column for z values (or data variable) of input data frame for secondary data
+            num_points - the number of conditioning points to search for
+            vario - numpy array of variogram parameters describing the spatial statistics
+            radius - search radius
+        Outputs:
+            est_cokrige - cokriging estimate for each point in coordinate grid
+            var_cokrige - variances
+        """
+        
         # unpack variogram parameters for rotation matrix
         azimuth = vario[0]
         major_range = vario[2]
         minor_range = vario[3]
-        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) # rotation matrix for scaling distance based on ranges and anisotropy
+        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) 
 
-        df1 = df1.rename(columns = {xx1: "X", yy1: "Y", zz1: "Z"}) # rename header names for consistency with other functions
+        df1 = df1.rename(columns = {xx1: "X", yy1: "Y", zz1: "Z"})
         df2 = df2.rename(columns = {xx2: "X", yy2: "Y", zz2: "Z"})
 
-        mean_1 = np.average(df1['Z']) # mean of primary data
-        var_1 = np.var(df1['Z']); # variance of primary data 
-        mean_2 = np.average(df2['Z']) # mean of secondary data
-        var_2 = np.var(df2['Z']); # variance of secondary data 
+        mean_1 = np.average(df1['Z']) 
+        var_1 = np.var(df1['Z'])
+        mean_2 = np.average(df2['Z']) 
+        var_2 = np.var(df2['Z'])
 
-        est_cokrige = np.zeros(shape=len(prediction_grid)) # make zeros array the size of the prediction grid
+        est_cokrige = np.zeros(shape=len(prediction_grid)) 
         var_cokrige = np.zeros(shape=len(prediction_grid))
 
         for z, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
             test_idx = np.sum(prediction_grid[z]==df1[['X', 'Y']].values,axis = 1)
-            if np.sum(test_idx==2)==0: # not our hard data 
+            if np.sum(test_idx==2)==0: #
                 
                 # get nearest neighbors
                 nearest = NearestNeighbor.nearest_neighbor_search(radius, num_points, 
@@ -770,99 +831,22 @@ class Interpolation:
                                                                   df1[['X','Y','Z']])           
                 nearest_second = NearestNeighbor.nearest_neighbor_secondary(prediction_grid[z], 
                                                                             df2[['X','Y','Z']]) 
-                norm_data_val = nearest[:,-1] # values of nearest neighbor points
+                norm_data_val = nearest[:,-1] 
                 norm_data_val = norm_data_val.reshape(len(norm_data_val),1)
                 norm_data_val = norm_data_val.T
-                norm_data_val = np.append(norm_data_val, [nearest_second[-1]]) # append secondary data value
-                xy_val = nearest[:, :-1] # coordinates of nearest neighbor points
-                xy_second = nearest_second[:-1] # secondary data coordinates
-                xy_val = np.append(xy_val, [xy_second], axis = 0) # append coordinates of secondary data
+                norm_data_val = np.append(norm_data_val, [nearest_second[-1]]) 
+                xy_val = nearest[:, :-1] 
+                xy_second = nearest_second[:-1] 
+                xy_val = np.append(xy_val, [xy_second], axis = 0) 
                 new_num_pts = len(nearest)
 
                 # covariance between data points
                 covariance_matrix = np.zeros(shape=((new_num_pts + 1, new_num_pts + 1)))
-                covariance_matrix[0:new_num_pts+1, 0:new_num_pts+1] = Covariance.make_covariance_matrix(xy_val, vario, rotation_matrix) # covariance within primary data
-
-                # covariance between data and unknown
-                covariance_array = np.zeros(shape=(new_num_pts + 1)) 
-                k_weights = np.zeros(shape=(new_num_pts + 1))
-                covariance_array[0:new_num_pts+1] = Covariance.make_covariance_array(xy_val, 
-                                                                                     np.tile(prediction_grid[z], 
-                                                                                             new_num_pts + 1), 
-                                                                                     vario, rotation_matrix)
-                covariance_array[new_num_pts] = covariance_array[new_num_pts] * corrcoef # correlation between primary and nearest neighbor (zero lag) secondary data
-
-                # update covariance matrix with secondary info (gamma2 = rho12 * gamma1)
-                covariance_matrix[new_num_pts, 0 : new_num_pts+1] = covariance_matrix[new_num_pts, 0 : new_num_pts+1] * corrcoef
-                covariance_matrix[0 : new_num_pts+1, new_num_pts] = covariance_matrix[0 : new_num_pts+1, new_num_pts] * corrcoef
-                covariance_matrix[new_num_pts, new_num_pts] = 1
-                covariance_matrix.reshape(((new_num_pts + 1)), ((new_num_pts + 1)))
-
-                # solve kriging system
-                k_weights, res, rank, s = np.linalg.lstsq(covariance_matrix, covariance_array, rcond = None) # get weights
-                part1 = mean_1 + np.sum(k_weights[0:new_num_pts]*(norm_data_val[0:new_num_pts] - mean_1)/np.sqrt(var_1))
-                part2 = k_weights[new_num_pts] * (nearest_second[-1] - mean_2)/np.sqrt(var_2)
-                               
-                est_cokrige[z] = part1 + part2 # compute mean
-                var_cokrige[z] = 1 - np.sum(k_weights[0:new_num_pts+1]*covariance_array[0:new_num_pts+1]) # compute variance
-            else:
-                est_cokrige[z] = df1['Z'].values[np.where(test_idx==2)[0][0]]
-                var_cokrige[z] = 0
-
-        return est_cokrige, var_cokrige
-
-
-    # perform cosimulation with MM1
-    def cosim_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef):
-
-        # unpack variogram parameters
-        azimuth = vario[0]
-        major_range = vario[2]
-        minor_range = vario[3]
-        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) # rotation matrix for scaling distance based on ranges and anisotropy
-
-        df1 = df1.rename(columns = {xx1: "X", yy1: "Y", zz1: "Z"}) # rename header names for consistency with other functions
-        df2 = df2.rename(columns = {xx2: "X", yy2: "Y", zz2: "Z"})
-        xyindex = np.arange(len(prediction_grid)) # generate random array for simulation order
-        random.shuffle(xyindex)
-
-        mean_1 = np.average(df1['Z']) # mean of primary data
-        var_1 = np.var(df1['Z']); # variance of primary data 
-        mean_2 = np.average(df2['Z']) # mean of secondary data
-        var_2 = np.var(df2['Z']); # variance of secondary data 
-
-        #est_cokrige = np.zeros(shape=len(prediction_grid)) # make zeros array the size of the prediction grid
-        #var_cokrige = np.zeros(shape=len(prediction_grid))    
-        cosim = np.zeros(shape=len(prediction_grid))  # preallocate space for simulation
-
-        # for each coordinate in the prediction grid
-        for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
-            z = xyindex[idx] # get coordinate index
-            test_idx = np.sum(prediction_grid[z]==df1[['X', 'Y']].values,axis = 1)
-            if np.sum(test_idx==2)==0: # not our hard data
-                
-                # get nearest neighbors
-                nearest = NearestNeighbor.nearest_neighbor_search(radius, num_points, 
-                                                                  prediction_grid[z], 
-                                                                  df1[['X','Y','Z']]) 
-                nearest_second = NearestNeighbor.nearest_neighbor_secondary(prediction_grid[z], 
-                                                                            df2[['X','Y','Z']])
-                norm_data_val = nearest[:,-1] # values of nearest neighbor points
-                norm_data_val = norm_data_val.reshape(len(norm_data_val),1)
-                norm_data_val = norm_data_val.T
-                norm_data_val = np.append(norm_data_val, [nearest_second[-1]]) # append secondary data value
-                xy_val = nearest[:, :-1] # coordinates of nearest neighbor points
-                xy_second = nearest_second[:-1] # secondary data coordinates
-                xy_val = np.append(xy_val, [xy_second], axis = 0) # append coordinates of secondary data
-                new_num_pts = len(nearest)
-
-                # covariance between data poitns
-                covariance_matrix = np.zeros(shape=((new_num_pts + 1, new_num_pts + 1))) # set up covariance matrix
                 covariance_matrix[0:new_num_pts+1, 0:new_num_pts+1] = Covariance.make_covariance_matrix(xy_val, 
                                                                                                         vario, rotation_matrix) 
 
                 # covariance between data and unknown
-                covariance_array = np.zeros(shape=(new_num_pts + 1)) # get covariance between data and unknown grid cell
+                covariance_array = np.zeros(shape=(new_num_pts + 1)) 
                 k_weights = np.zeros(shape=(new_num_pts + 1))
                 covariance_array[0:new_num_pts+1] = Covariance.make_covariance_array(xy_val, 
                                                                                      np.tile(prediction_grid[z], 
@@ -877,18 +861,111 @@ class Interpolation:
                 covariance_matrix.reshape(((new_num_pts + 1)), ((new_num_pts + 1)))
 
                 # solve kriging system
-                k_weights, res, rank, s = np.linalg.lstsq(covariance_matrix, covariance_array, rcond = None) # get weights
+                k_weights, res, rank, s = np.linalg.lstsq(covariance_matrix, covariance_array, rcond = None) 
                 part1 = mean_1 + np.sum(k_weights[0:new_num_pts]*(norm_data_val[0:new_num_pts] - mean_1)/np.sqrt(var_1))
                 part2 = k_weights[new_num_pts] * (nearest_second[-1] - mean_2)/np.sqrt(var_2)
-                est_cokrige = part1 + part2 # compute mean
-                var_cokrige = 1 - np.sum(k_weights*covariance_array) # compute variance
-                var_cokrige = np.absolute(var_cokrige) # make sure variances are non-negative
+                               
+                est_cokrige[z] = part1 + part2 
+                var_cokrige[z] = 1 - np.sum(k_weights[0:new_num_pts+1]*covariance_array[0:new_num_pts+1]) 
+            else:
+                est_cokrige[z] = df1['Z'].values[np.where(test_idx==2)[0][0]]
+                var_cokrige[z] = 0
 
-                cosim[z] = np.random.normal(est_cokrige,math.sqrt(var_cokrige),1) # simulate by randomly sampling a value
+        return est_cokrige, var_cokrige
+
+
+    # perform cosimulation with MM1
+    def cosim_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef):
+        """
+        Cosimulation under Markov model 1 assumptions
+        Inputs:
+            prediction_grid - x,y coordinate numpy array of prediction grid, or grid cells that will be estimated
+            df1 - data frame of primary conditioning data
+            xx1 - column name for x coordinates of input data frame for primary data
+            yy1 - column name for y coordinates of input data frame for primary data
+            zz1 - column for z values (or data variable) of input data frame for primary data
+            df2 - data frame of secondary data
+            xx2 - column name for x coordinates of input data frame for secondary data
+            yy2 - column name for y coordinates of input data frame for secondary data
+            zz2 - column for z values (or data variable) of input data frame for secondary data
+            num_points - the number of conditioning points to search for
+            vario - numpy array of variogram parameters describing the spatial statistics
+            radius - search radius
+        Outputs:
+            cosim - cosimulation for each point in coordinate grid
+        """
+            
+        # unpack variogram parameters
+        azimuth = vario[0]
+        major_range = vario[2]
+        minor_range = vario[3]
+        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range)
+        df1 = df1.rename(columns = {xx1: "X", yy1: "Y", zz1: "Z"}) 
+        df2 = df2.rename(columns = {xx2: "X", yy2: "Y", zz2: "Z"})
+        xyindex = np.arange(len(prediction_grid)) 
+        random.shuffle(xyindex)
+
+        mean_1 = np.average(df1['Z']) 
+        var_1 = np.var(df1['Z'])
+        mean_2 = np.average(df2['Z']) 
+        var_2 = np.var(df2['Z'])
+   
+        cosim = np.zeros(shape=len(prediction_grid))
+
+        # for each coordinate in the prediction grid
+        for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
+            z = xyindex[idx]
+            test_idx = np.sum(prediction_grid[z]==df1[['X', 'Y']].values,axis = 1)
+            if np.sum(test_idx==2)==0:
+                
+                # get nearest neighbors
+                nearest = NearestNeighbor.nearest_neighbor_search(radius, num_points, 
+                                                                  prediction_grid[z], 
+                                                                  df1[['X','Y','Z']]) 
+                nearest_second = NearestNeighbor.nearest_neighbor_secondary(prediction_grid[z], 
+                                                                            df2[['X','Y','Z']])
+                norm_data_val = nearest[:,-1] 
+                norm_data_val = norm_data_val.reshape(len(norm_data_val),1)
+                norm_data_val = norm_data_val.T
+                norm_data_val = np.append(norm_data_val, [nearest_second[-1]]) 
+                xy_val = nearest[:, :-1] 
+                xy_second = nearest_second[:-1] #
+                xy_val = np.append(xy_val, [xy_second], axis = 0) 
+                new_num_pts = len(nearest)
+
+                # covariance between data poitns
+                covariance_matrix = np.zeros(shape=((new_num_pts + 1, new_num_pts + 1))) 
+                covariance_matrix[0:new_num_pts+1, 0:new_num_pts+1] = Covariance.make_covariance_matrix(xy_val, 
+                                                                                                        vario, rotation_matrix) 
+
+                # covariance between data and unknown
+                covariance_array = np.zeros(shape=(new_num_pts + 1)) 
+                k_weights = np.zeros(shape=(new_num_pts + 1))
+                covariance_array[0:new_num_pts+1] = Covariance.make_covariance_array(xy_val, 
+                                                                                     np.tile(prediction_grid[z], 
+                                                                                             new_num_pts + 1), 
+                                                                                     vario, rotation_matrix)
+                covariance_array[new_num_pts] = covariance_array[new_num_pts] * corrcoef 
+
+                # update covariance matrix with secondary info (gamma2 = rho12 * gamma1)
+                covariance_matrix[new_num_pts, 0 : new_num_pts+1] = covariance_matrix[new_num_pts, 0 : new_num_pts+1] * corrcoef
+                covariance_matrix[0 : new_num_pts+1, new_num_pts] = covariance_matrix[0 : new_num_pts+1, new_num_pts] * corrcoef
+                covariance_matrix[new_num_pts, new_num_pts] = 1
+                covariance_matrix.reshape(((new_num_pts + 1)), ((new_num_pts + 1)))
+
+                # solve kriging system
+                k_weights, res, rank, s = np.linalg.lstsq(covariance_matrix, covariance_array, rcond = None) 
+                part1 = mean_1 + np.sum(k_weights[0:new_num_pts]*(norm_data_val[0:new_num_pts] - mean_1)/np.sqrt(var_1))
+                part2 = k_weights[new_num_pts] * (nearest_second[-1] - mean_2)/np.sqrt(var_2)
+                est_cokrige = part1 + part2 
+                var_cokrige = 1 - np.sum(k_weights*covariance_array)
+                var_cokrige = np.absolute(var_cokrige) 
+
+                cosim[z] = np.random.normal(est_cokrige,math.sqrt(var_cokrige),1) 
             else:
                 cosim[z] = df1['Z'].values[np.where(test_idx==2)[0][0]]
 
-            coords = prediction_grid[z:z+1,:] # update the conditioning data
-            df1 = pd.concat([df1,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 'Z': [cosim[z]]})], sort=False) # add new points by concatenating dataframes 
+            coords = prediction_grid[z:z+1,:]
+            df1 = pd.concat([df1,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 'Z': [cosim[z]]})], sort=False) 
 
         return cosim
