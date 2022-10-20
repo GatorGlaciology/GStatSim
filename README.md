@@ -1,4 +1,4 @@
-<img src ="GStat-Sim/Images/GatorGlaciologyLogo-01.jpg" width="100" align = "right">
+<img src ="/Images/GatorGlaciologyLogo-01.jpg" width="100" align = "right">
 
 # GStatSim
 GStatSim is a Python package specifically designed for geostatistical interpolation and simulation. It is inspired by open source geostatistical resources such as GeostatsPy and SciKit-GStat. The functions are intended to address the challenges of working with datasets with large crossover errors, non-linear trends, variability in measurement density, and non-stationarity. These tools are part of our ongoing effort to develop and adapt open-access geostatistical functions.
@@ -7,7 +7,7 @@ In its current state, the demos focus on the geostatistical simulation of subgla
 
 We will continuously develop new tools and tutorials to address specific technical challenges in geostatistics. Do you have feedback or suggestions? Specific things that we should account for? Feel free to contact me at emackie@ufl.edu. Our goal is to create tools that are useful and accessible, so we welcome your thoughts and insight.
 
-<img src ="GStat-Sim/Images/GStat-sim_master_figure.png" align = "center">
+<img src ="/Images/GStat-sim_master_figure.png" align = "center">
 
 # Features
 
@@ -39,10 +39,15 @@ into groups that are each assigned their own variogram.
 
 # Contributors
 (Emma) Mickey MacKie, University of Florida
+
 Michael Field, University of Florida
+
 Lijing Wang, Stanford University
+
 (Zhen) David Yin, Stanford University
+
 Nathan Schoedl, University of Florida
+
 Matthew Hibbs, University of Florida
 
 # Useage
@@ -61,6 +66,28 @@ Install GStatSim with *pip install GStatSim*
 * SciKit-GStat
 
 These can all be installed using the command *pip install (package name)*
+
+## Cite as
+
+MacKie, Emma, Field, Michael, Wang, Lijing, Yin, Zhen, Schoedl, Nathan, & Hibbs, Matthew. (2022). GStatSim (1.0). Zenodo. https://doi.org/10.5281/zenodo.7230276
+
+or
+
+@software{mackie_emma_2022_7230276,
+  author       = {MacKie, Emma and 
+                  Field, Michael and                
+                  Wang, Lijing and                 
+                  Yin, Zhen and                 
+                  Schoedl, Nathan and                 
+                  Hibbs, Matthew},                 
+  title        = {GStatSim},
+  month        = oct, 
+  year         = 2022,  
+  publisher    = {Zenodo}, 
+  version      = {1.0}, 
+  doi          = {10.5281/zenodo.7230276},  
+  url          = {https://doi.org/10.5281/zenodo.7230276}  
+}
 
 # Datasets
 
