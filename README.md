@@ -69,19 +69,33 @@ MacKie, Emma, Field, Michael, Wang, Lijing, Yin, Zhen, Schoedl, Nathan, & Hibbs,
 or
 
 @software{mackie_emma_2022_7230276,
+
   author       = {MacKie, Emma and
+  
                   Field, Michael and
+                  
                   Wang, Lijing and
+                  
                   Yin, Zhen and
+                  
                   Schoedl, Nathan and
+                  
                   Hibbs, Matthew},
+                  
   title        = {GStatSim},
+  
   month        = oct,
+  
   year         = 2022,
+  
   publisher    = {Zenodo},
+  
   version      = {1.0},
+  
   doi          = {10.5281/zenodo.7230276},
+  
   url          = {https://doi.org/10.5281/zenodo.7230276}
+  
 }
 
 # Datasets
