@@ -62,6 +62,28 @@ Install GStatSim with *pip install GStatSim*
 
 These can all be installed using the command *pip install (package name)*
 
+## Cite as
+
+MacKie, Emma, Field, Michael, Wang, Lijing, Yin, Zhen, Schoedl, Nathan, & Hibbs, Matthew. (2022). GStatSim (1.0). Zenodo. https://doi.org/10.5281/zenodo.7230276
+
+or
+
+@software{mackie_emma_2022_7230276,
+  author       = {MacKie, Emma and
+                  Field, Michael and
+                  Wang, Lijing and
+                  Yin, Zhen and
+                  Schoedl, Nathan and
+                  Hibbs, Matthew},
+  title        = {GStatSim},
+  month        = oct,
+  year         = 2022,
+  publisher    = {Zenodo},
+  version      = {1.0},
+  doi          = {10.5281/zenodo.7230276},
+  url          = {https://doi.org/10.5281/zenodo.7230276}
+}
+
 # Datasets
 
 The demos use radar bed measurements from the Center for the Remote Sensing of Ice Sheets (CReSIS, 2020).
