@@ -39,10 +39,15 @@ into groups that are each assigned their own variogram.
 
 # Contributors
 (Emma) Mickey MacKie, University of Florida
+
 Michael Field, University of Florida
+
 Lijing Wang, Stanford University
+
 (Zhen) David Yin, Stanford University
+
 Nathan Schoedl, University of Florida
+
 Matthew Hibbs, University of Florida
 
 # Useage
