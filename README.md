@@ -50,7 +50,7 @@ Nathan Schoedl, University of Florida
 
 Matthew Hibbs, University of Florida
 
-# Useage
+# Usage
 Install GStatSim with *pip install GStatSim*
 
 ## Package dependencies
