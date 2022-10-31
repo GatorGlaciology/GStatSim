@@ -439,16 +439,17 @@ def make_rotation_matrix(azimuth, major_range, minor_range):
 
 class Covariance:
 
-    def covar(effective_lag, sill):
+    def covar(effective_lag, sill, nug):
         """
         Compute covariance using exponential covariance model
         Inputs:
             effective_lag - lag distance that is normalized to a range of 1
             sill - sill of variogram
+            nug - nugget of variogram
         Outputs:
             c - covariance
         """
-        c = 1 - sill + np.exp(-3 * effective_lag) 
+        c = (sill - nug)*np.exp(-3 * effective_lag)
 
         return c
 
@@ -463,11 +464,10 @@ class Covariance:
             covariance_matrix - nxn matrix of covariance between n points
         """
         nug = vario[1]
-        sill = vario[4] - nug                               
-        c = -nug 
+        sill = vario[4]   
         mat = np.matmul(coord, rotation_matrix)
         effective_lag = pairwise_distances(mat,mat) 
-        covariance_matrix = c + Covariance.covar(effective_lag, sill) 
+        covariance_matrix = Covariance.covar(effective_lag, sill, nug) 
 
         return covariance_matrix
 
@@ -483,12 +483,11 @@ class Covariance:
             covariance_array - nx1 array of covariance between n points and grid cell of interest
         """
         nug = vario[1]
-        sill = vario[4] - nug                          
-        c = -nug 
+        sill = vario[4]
         mat1 = np.matmul(coord1, rotation_matrix) 
         mat2 = np.matmul(coord2.reshape(-1,2), rotation_matrix) 
         effective_lag = np.sqrt(np.square(mat1 - mat2).sum(axis=1))
-        covariance_array = c + Covariance.covar(effective_lag, sill)
+        covariance_array = Covariance.covar(effective_lag, sill, nug)
 
         return covariance_array
 
@@ -525,7 +524,7 @@ class Interpolation:
 
         df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"})   
         mean_1 = df['Z'].mean() 
-        var_1 = df['Z'].var()
+        var_1 = vario[4]
         est_sk = np.zeros(shape=len(prediction_grid)) 
         var_sk = np.zeros(shape=len(prediction_grid))
 
@@ -558,16 +557,9 @@ class Interpolation:
                 covariance_matrix.reshape(((new_num_pts)), ((new_num_pts)))
                 k_weights, res, rank, s = np.linalg.lstsq(covariance_matrix, 
                                                           covariance_array, rcond = None)
-                
-                vario2 = [vario[0], vario[1], vario[2], vario[3], var_1]
-                covariance_array2 = Covariance.make_covariance_array(xy_val, 
-                                                         np.tile(prediction_grid[z], new_num_pts), 
-                                                         vario2, rotation_matrix)
-                k_weights2, res, rank, s = np.linalg.lstsq(covariance_matrix, 
-                                                          covariance_array2, rcond = None)
 
                 est_sk[z] = mean_1 + (np.sum(k_weights*(norm_data_val[:] - mean_1))) 
-                var_sk[z] = var_1 - np.sum(k_weights2*covariance_array2)
+                var_sk[z] = var_1 - np.sum(k_weights*covariance_array)
             else:
                 est_sk[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
                 var_sk[z] = 0
@@ -598,7 +590,7 @@ class Interpolation:
         rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) 
 
         df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"}) 
-        var_1 = np.var(df['Z'])    
+        var_1 = vario[4]
         est_ok = np.zeros(shape=len(prediction_grid)) 
         var_ok = np.zeros(shape=len(prediction_grid))
 
@@ -634,18 +626,8 @@ class Interpolation:
                 k_weights, res, rank, s = np.linalg.lstsq(covariance_matrix, 
                                                           covariance_array, rcond = None) 
                 
-
-                vario2 = [vario[0], vario[1], vario[2], vario[3], var_1]
-                covariance_array2 = np.zeros(shape=(new_num_pts+1))
-                covariance_array2[new_num_pts] = 1 
-                covariance_array2[0:new_num_pts] = Covariance.make_covariance_array(xy_val, 
-                                                         np.tile(prediction_grid[z], new_num_pts), 
-                                                         vario2, rotation_matrix)
-                k_weights2, res, rank, s = np.linalg.lstsq(covariance_matrix, 
-                                                          covariance_array2, rcond = None)
-                
                 est_ok[z] = local_mean + np.sum(k_weights[0:new_num_pts]*(norm_data_val[:] - local_mean)) 
-                var_ok[z] = var_1 - np.sum(k_weights2[0:new_num_pts]*covariance_array2[0:new_num_pts])
+                var_ok[z] = var_1 - np.sum(k_weights[0:new_num_pts]*covariance_array[0:new_num_pts])
             else:
                 est_ok[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
                 var_ok[z] = 0
@@ -678,7 +660,7 @@ class Interpolation:
         xyindex = np.arange(len(prediction_grid)) 
         random.shuffle(xyindex)
         mean_1 = df['Z'].mean() 
-        var_1 = df['Z'].var()   
+        var_1 = vario[4]
         sgs = np.zeros(shape=len(prediction_grid)) 
 
         for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
@@ -745,7 +727,7 @@ class Interpolation:
         df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"}) 
         xyindex = np.arange(len(prediction_grid)) 
         random.shuffle(xyindex)
-        var_1 = np.var(df["Z"].values)      
+        var_1 = vario[4]
         sgs = np.zeros(shape=len(prediction_grid))  
 
         for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
@@ -814,7 +796,6 @@ class Interpolation:
         xyindex = np.arange(len(prediction_grid)) 
         random.shuffle(xyindex)
         mean_1 = np.average(df["Z"].values) 
-        var_1 = np.var(df["Z"].values);       
         sgs = np.zeros(shape=len(prediction_grid)) 
 
         for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
@@ -835,6 +816,7 @@ class Interpolation:
                 azimuth = vario[0]
                 major_range = vario[2]
                 minor_range = vario[3]
+                var_1 = vario[4]
                 rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) 
                 new_num_pts = len(nearest)
 
@@ -898,7 +880,7 @@ class Interpolation:
         df2 = df2.rename(columns = {xx2: "X", yy2: "Y", zz2: "Z"})
 
         mean_1 = np.average(df1['Z']) 
-        var_1 = np.var(df1['Z'])
+        var_1 = vario[4]
         mean_2 = np.average(df2['Z']) 
         var_2 = np.var(df2['Z'])
 
@@ -950,7 +932,7 @@ class Interpolation:
                 part2 = k_weights[new_num_pts] * (nearest_second[-1] - mean_2)/np.sqrt(var_2)
                                
                 est_cokrige[z] = part1 + part2 
-                var_cokrige[z] = 1 - np.sum(k_weights[0:new_num_pts+1]*covariance_array[0:new_num_pts+1]) 
+                var_cokrige[z] = var_1 - np.sum(k_weights[0:new_num_pts+1]*covariance_array[0:new_num_pts+1]) 
             else:
                 est_cokrige[z] = df1['Z'].values[np.where(test_idx==2)[0][0]]
                 var_cokrige[z] = 0
@@ -989,7 +971,7 @@ class Interpolation:
         random.shuffle(xyindex)
 
         mean_1 = np.average(df1['Z']) 
-        var_1 = np.var(df1['Z'])
+        var_1 = vario[4]
         mean_2 = np.average(df2['Z']) 
         var_2 = np.var(df2['Z'])
    
@@ -1041,7 +1023,7 @@ class Interpolation:
                 part1 = mean_1 + np.sum(k_weights[0:new_num_pts]*(norm_data_val[0:new_num_pts] - mean_1)/np.sqrt(var_1))
                 part2 = k_weights[new_num_pts] * (nearest_second[-1] - mean_2)/np.sqrt(var_2)
                 est_cokrige = part1 + part2 
-                var_cokrige = 1 - np.sum(k_weights*covariance_array)
+                var_cokrige = var_1 - np.sum(k_weights*covariance_array)
                 var_cokrige = np.absolute(var_cokrige) 
 
                 cosim[z] = np.random.normal(est_cokrige,math.sqrt(var_cokrige),1) 
