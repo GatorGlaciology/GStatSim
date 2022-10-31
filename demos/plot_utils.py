@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import earthpy.spatial as es
+from matplotlib.colors import LightSource
 
 def make_colorbar(fig, im, vmin, vmax, clabel, ax=None):
     if ax is None:
@@ -36,12 +36,20 @@ def mplot1(Pred_grid_xy, sim, rows, cols, title, xlabel='X [m]', ylabel='Y [m]',
 
     xmin = Pred_grid_xy[:,0].min(); xmax = Pred_grid_xy[:,0].max()
     ymin = Pred_grid_xy[:,1].min(); ymax = Pred_grid_xy[:,1].max()
+    
+    cmap=plt.get_cmap('gist_earth')
 
     fig, ax = plt.subplots(1, figsize=(5,5))
-    im = plt.pcolormesh(x_mat, y_mat, mat, vmin=vmin, vmax=vmax, cmap='gist_earth')
+    im = plt.pcolormesh(x_mat, y_mat, mat, vmin=vmin, vmax=vmax, cmap=cmap)
+    
     if hillshade == True:
-        hillshade = es.hillshade(mat, azimuth=210, altitude=10)
-        plt.pcolormesh(x_mat, y_mat, hillshade, cmap='Greys', alpha=0.1)
+        # Shade from the northeast, with the sun 45 degrees from horizontal
+        ls = LightSource(azdeg=45, altdeg=45)
+        
+        # leaving the dx and dy as 1 means a vertical exageration equal to dx/dy
+        hillshade = ls.hillshade(mat, vert_exag=1, dx=1, dy=1, fraction=1.0)
+        plt.pcolormesh(x_mat, y_mat, hillshade, cmap='gray', alpha=0.1)
+        
     if titlepad is None:
         plt.title(title)
     else:
@@ -106,10 +114,15 @@ def mplot2_hillshade(Pred_grid_xy, sim1, sim2, rows, cols, title1, title2):
     fig, axs = plt.subplots(1, 2, figsize=(10,5))
 
     for i, (ax, plot) in enumerate(zip(axs, plots)):
-        sgs_mat = plot.reshape((rows, cols))
-        hillshade = es.hillshade(plot, azimuth = 210, altitude = 10)
-        im = ax.pcolormesh(x_mat, y_mat, plot, vmin=-400, vmax=600, cmap='gist_earth')
-        ax.pcolormesh(x_mat, y_mat, hillshade, cmap='Greys', alpha=0.1)
+        ax.pcolormesh(x_mat, y_mat, plot, vmin=-400, vmax=600, cmap='gist_earth')
+        
+        # Shade from the northeast, with the sun 45 degrees from horizontal
+        ls = LightSource(azdeg=45, altdeg=45)
+        
+        # leaving the dx and dy as 1 means a vertical exageration equal to dx/dy
+        hillshade = ls.hillshade(plot, vert_exag=1, dx=1, dy=1, fraction=1.0)
+        ax.pcolormesh(x_mat, y_mat, hillshade, cmap='gray', alpha=0.1)
+        
         ax.set_title(f'{titles[i]}')
         ax.set_xlabel('X [m]')
         if i == 0:

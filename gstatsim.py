@@ -1052,3 +1052,14 @@ class Interpolation:
             df1 = pd.concat([df1,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 'Z': [cosim[z]]})], sort=False) 
 
         return cosim
+
+__all__ = ['Gridding', 'NearestNeighbor', 'Covariance', 'Interpolation', 'rbf_trend', 
+    'adaptive_partitioning', 'make_rotation_matrix']
+
+def __dir__():
+    return __all__
+
+def __getattr__(name):
+    if name not in __all__:
+        raise AttributeError(f'module {__name__} has no attribute {name}')
+    return globals()[name]
