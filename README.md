@@ -54,6 +54,11 @@ Matthew Hibbs, University of Florida
 
 Install GStatSim with *pip install gstatsim*
 
+or
+
+*git clone https://github.com/GatorGlaciology/GStatSim*
+
+
 
 ## Package dependencies
 * Numpy
