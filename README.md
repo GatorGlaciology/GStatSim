@@ -64,10 +64,9 @@ Install GStatSim with *pip install gstatsim*
 
 ## Requirements for visualization and variogram analysis
 * Matplotlib
-* earthpy
 * SciKit-GStat
 
-These can all be installed using the command *pip install (package name)*
+These can all be installed using the command *pip install (package name)*. We have included a plot_utils.py file with plotting routines.
 
 ## Cite as
 
