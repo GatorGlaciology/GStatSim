@@ -880,7 +880,8 @@ class Interpolation:
         df2 = df2.rename(columns = {xx2: "X", yy2: "Y", zz2: "Z"})
 
         mean_1 = np.average(df1['Z']) 
-        var_1 = vario[4]
+        var_1 = np.var(df1['Z'])
+        vario[4] = np.var(df1['Z'])
         mean_2 = np.average(df2['Z']) 
         var_2 = np.var(df2['Z'])
 
@@ -932,7 +933,7 @@ class Interpolation:
                 part2 = k_weights[new_num_pts] * (nearest_second[-1] - mean_2)/np.sqrt(var_2)
                                
                 est_cokrige[z] = part1 + part2 
-                var_cokrige[z] = var_1 - np.sum(k_weights[0:new_num_pts+1]*covariance_array[0:new_num_pts+1]) 
+                var_cokrige[z] = var_1 - np.sum(k_weights*covariance_array)
             else:
                 est_cokrige[z] = df1['Z'].values[np.where(test_idx==2)[0][0]]
                 var_cokrige[z] = 0
@@ -971,7 +972,8 @@ class Interpolation:
         random.shuffle(xyindex)
 
         mean_1 = np.average(df1['Z']) 
-        var_1 = vario[4]
+        var_1 = np.var(df1['Z'])
+        vario[4] = np.var(df1['Z'])
         mean_2 = np.average(df2['Z']) 
         var_2 = np.var(df2['Z'])
    
@@ -1011,7 +1013,7 @@ class Interpolation:
                                                                                              new_num_pts + 1), 
                                                                                      vario, rotation_matrix)
                 covariance_array[new_num_pts] = covariance_array[new_num_pts] * corrcoef 
-
+                
                 # update covariance matrix with secondary info (gamma2 = rho12 * gamma1)
                 covariance_matrix[new_num_pts, 0 : new_num_pts+1] = covariance_matrix[new_num_pts, 0 : new_num_pts+1] * corrcoef
                 covariance_matrix[0 : new_num_pts+1, new_num_pts] = covariance_matrix[0 : new_num_pts+1, new_num_pts] * corrcoef
