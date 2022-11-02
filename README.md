@@ -79,7 +79,7 @@ MacKie, Emma, Field, Michael, Wang, Lijing, Yin, Zhen, Schoedl, Nathan, & Hibbs,
 
 or
 
-@software{mackie_emma_2022_7271915,
+@software{mackie_emma_2022_7274640,
   author       = {MacKie, Emma and
                   Field, Michael and
                   Wang, Lijing and
@@ -91,8 +91,8 @@ or
   year         = 2022,
   publisher    = {Zenodo},
   version      = {1.0},
-  doi          = {10.5281/zenodo.7271915},
-  url          = {https://doi.org/10.5281/zenodo.7271915}
+  doi          = {10.5281/zenodo.7274640},
+  url          = {https://doi.org/10.5281/zenodo.7274640}
 }
 
 # Datasets
