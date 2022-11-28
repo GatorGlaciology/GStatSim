@@ -62,24 +62,24 @@ or
 
 
 
-## Package dependencies
+# Package dependencies
 * Numpy
 * Pandas
 * Scipy
 * tqdm
 * Sklearn
 
-## Requirements for visualization and variogram analysis
+# Requirements for visualization and variogram analysis
 * Matplotlib
 * SciKit-GStat
 
 These can all be installed using the command *pip install (package name)*. We have included a plot_utils.py file with plotting routines.
 
-## Educational use
+# Educational use
 
 GStatSim is well-suited for educational use. Please contact us if you plan on using GStatSim material in a course so we can track the impact of our work.
 
-## Cite as
+# Cite as
 
 MacKie, Emma, Field, Michael, Wang, Lijing, Yin, Zhen, Schoedl, Nathan, & Hibbs, Matthew. (2022). GStatSim (1.0). Zenodo. https://doi.org/10.5281/zenodo.7230276
 
