@@ -183,12 +183,21 @@ class Gridding:
 def rbf_trend(grid_matrix, smooth_factor, res):
     """
     Estimate trend using radial basis functions
-    Inputs:
-        grid_matrix - matrix of gridded conditioning data
-        smooth_factor - regularizing parameter
-        res - grid cell resolution
-    Outputs:
-        trend_rbf - trend estimate
+    
+    Parameters
+    ----------
+        grid_matrix : numpy.ndarray
+            matrix of gridded conditioning data
+        smooth_factor : float
+            Parameter controlling smoothness of trend. Values greater than 
+            zero increase the smoothness of the approximation.
+        res : float
+            grid cell resolution
+            
+    Returns
+    -------
+        trend_rbf : numpy.ndarray
+            RBF trend estimate
     """ 
     sigma = np.rint(smooth_factor/res)
     ny, nx = grid_matrix.shape
@@ -455,19 +464,33 @@ class NearestNeighbor:
 def adaptive_partitioning(df_data, xmin, xmax, ymin, ymax, i, max_points, min_length, max_iter=None):
     """
     Rercursively split clusters until they are all below max_points, but don't go smaller than min_length
-    Inputs:
-        df_data - DataFrame with X, Y, and K (cluster id)
-        xmin - min x value of this partion
-        xmax - max x value of this partion
-        ymin - min y value of this partion
-        ymax - max y value of this partion
-        i - keeps track of total calls to this function
-        max_points - all clusters will be "quartered" until points below this
-        min_length - minimum side length of sqaures, preference over max_points
-        max_iter - maximum iterations if worried about unending recursion
-    Outputs:
-        df_data - updated DataFrame with new cluster assigned the next integer
-        i - number of iterations
+    
+    Parameters
+    ----------
+        df_data : pandas DataFrame 
+            DataFrame with X, Y, and K (cluster id) columns
+        xmin : float
+            min x value of this partion
+        xmax : float
+            max x value of this partion
+        ymin : float
+            min y value of this partion
+        ymax : float
+            max y value of this partion
+        i : int
+            keeps track of total calls to this function
+        max_points : int
+            all clusters will be "quartered" until points below this
+        min_length : float
+            minimum side length of sqaures, preference over max_points
+        max_iter : int
+            maximum iterations if worried about unending recursion
+    Returns
+    -------
+        df_data : pandas DataFrame
+            updated DataFrame with new cluster assigned
+        i : int
+            number of iterations
     """
     # optional 'safety' if there is concern about runaway recursion
     if max_iter is not None:
