@@ -1,6 +1,6 @@
 <img src ="/images/GatorGlaciologyLogo-01.jpg" width="100" align = "right">
 
-[![Jupyter Book Badge](https://jupyterbook.org/badge.svg)](<https://gatorglaciology.github.io/gstatsimbook/intro.html>)  [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/GatorGlaciology/gstatsimbook/HEAD?urlpath=lab)  ![PyPI](https://img.shields.io/pypi/v/gstatsim?label=pypi%20package) ![PyPI - Downloads](https://img.shields.io/pypi/dm/gstatsim) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/gstatsim.svg?style=social&label=Follow%20%40gstatsim)](https://twitter.com/GatorGlaciology)
+[![Jupyter Book Badge](https://jupyterbook.org/badge.svg)](<https://gatorglaciology.github.io/gstatsimbook/intro.html>)  [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/GatorGlaciology/gstatsimbook/HEAD?urlpath=lab)  ![PyPI](https://img.shields.io/pypi/v/gstatsim?label=pypi%20package) ![PyPI - Downloads](https://img.shields.io/pypi/dm/gstatsim) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/gstatsim.svg?style=social&label=Follow%20%40GatorGlaciology)](https://twitter.com/GatorGlaciology)
 
 
 </p>
