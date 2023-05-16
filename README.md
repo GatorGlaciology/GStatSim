@@ -1,9 +1,6 @@
 <img src ="/images/GatorGlaciologyLogo-01.jpg" width="100" align = "right">
 
-[![Jupyter Book Badge](https://jupyterbook.org/badge.svg)](<https://gatorglaciology.github.io/gstatsimbook/intro.html>) [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/GatorGlaciology/gstatsimbook/HEAD?urlpath=lab)
-
-![PyPI](https://img.shields.io/pypi/v/PACKAGE?label=pypi%20package)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/gstatsim)
+[![Jupyter Book Badge](https://jupyterbook.org/badge.svg)](<https://gatorglaciology.github.io/gstatsimbook/intro.html>) [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/GatorGlaciology/gstatsimbook/HEAD?urlpath=lab) ![PyPI](https://img.shields.io/pypi/v/PACKAGE?label=pypi%20package) ![PyPI - Downloads](https://img.shields.io/pypi/dm/gstatsim)
 
 </p>
 
