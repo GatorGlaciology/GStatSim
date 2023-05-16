@@ -2,8 +2,8 @@
 
 [![Jupyter Book Badge](https://jupyterbook.org/badge.svg)](<https://gatorglaciology.github.io/gstatsimbook/intro.html>) [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/GatorGlaciology/gstatsimbook/HEAD?urlpath=lab)
 
-[![Downloads](https://img.shields.io/badge/dynamic/json.svg)](https://pypistats.org/packages/gstatsim)
-
+![PyPI](https://img.shields.io/pypi/v/PACKAGE?label=pypi%20package)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/gstatsim)
 
 </p>
 
