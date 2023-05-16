@@ -2,6 +2,8 @@
 
 [![Jupyter Book Badge](https://jupyterbook.org/badge.svg)](<https://gatorglaciology.github.io/gstatsimbook/intro.html>) [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/GatorGlaciology/gstatsimbook/HEAD?urlpath=lab)
 
+[![Downloads](https://img.shields.io/badge/dynamic/json.svg?label=downloads&url=https%3A%2F%2Fpypistats.org%2Fapi%2Fpackages%2Fpython-hcl2%2Frecent&query=data.last_month&colorB=brightgreen&suffix=%2FMonth)]([https://pypistats.org/packages/python-hcl2](https://pypistats.org/packages/gstatsim))
+
 
 </p>
 
