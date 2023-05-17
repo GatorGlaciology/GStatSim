@@ -10,7 +10,7 @@ GStatSim is a Python package specifically designed for geostatistical interpolat
 
 We have created Jupyter Book tutorials here: https://gatorglaciology.github.io/gstatsimbook/intro.html
 
-In its current state, the demos focus on the geostatistical simulation of subglacial topography. However, these protocols could be applied to a number topics in glaciology, or geoscientific problems in general.
+In its current state, the demos focus on the geostatistical simulation of subglacial topography. However, these protocols could be applied to a number geoscientific topics.
 
 We will continuously develop new tools and tutorials to address specific technical challenges in geostatistics. Do you have feedback or suggestions? Specific things that we should account for? Feel free to contact me at emackie@ufl.edu. Our goal is to create tools that are useful and accessible, so we welcome your thoughts and insight.
 
