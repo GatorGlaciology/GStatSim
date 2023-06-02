@@ -87,24 +87,17 @@ GStatSim is well-suited for educational use. Please contact us if you plan on us
 
 # Cite as
 
-MacKie, Emma, Field, Michael, Wang, Lijing, Yin, Zhen, Schoedl, Nathan, & Hibbs, Matthew. (2022). GStatSim (1.0). Zenodo. https://doi.org/10.5281/zenodo.7230276
+MacKie, E. J., Field, M., Wang, L., Yin, Z., Schoedl, N., Hibbs, M., & Zhang, A. (2022). GStatSim V1. 0: a Python package for geostatistical interpolation and simulation. EGUsphere, 1-27.
 
 or
 
-@software{mackie_emma_2022_7274640,
-  author       = {MacKie, Emma and
-                  Field, Michael and
-                  Wang, Lijing and
-                  Yin, Zhen and
-                  Schoedl, Nathan and
-                  Hibbs, Matthew},
-  title        = {GStatSim},
-  month        = oct,
-  year         = 2022,
-  publisher    = {Zenodo},
-  version      = {1.0},
-  doi          = {10.5281/zenodo.7274640},
-  url          = {https://doi.org/10.5281/zenodo.7274640}
+@article{mackie2022gstatsim,
+  title={GStatSim V1. 0: a Python package for geostatistical interpolation and simulation},
+  author={MacKie, Emma Johanne and Field, Michael and Wang, Lijing and Yin, Zhen and Schoedl, Nathan and Hibbs, Matthew and Zhang, Allan},
+  journal={EGUsphere},
+  pages={1--27},
+  year={2022},
+  publisher={Copernicus GmbH}
 }
 
 # Datasets
