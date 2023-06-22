@@ -87,16 +87,16 @@ GStatSim is well-suited for educational use. Please contact us if you plan on us
 
 # Cite as
 
-MacKie, E. J., Field, M., Wang, L., Yin, Z., Schoedl, N., Hibbs, M., & Zhang, A. (2022). GStatSim V1. 0: a Python package for geostatistical interpolation and simulation. EGUsphere, 1-27.
+MacKie, E. J., Field, M., Wang, L., Yin, Z., Schoedl, N., Hibbs, M., & Zhang, A. (2023). GStatSim V1. 0: a Python package for geostatistical interpolation and conditional simulation. EGUsphere, 1-27.
 
 or
 
 @article{mackie2022gstatsim,
-  title={GStatSim V1. 0: a Python package for geostatistical interpolation and simulation},
+  title={GStatSim V1. 0: a Python package for geostatistical interpolation and conditional simulation},
   author={MacKie, Emma Johanne and Field, Michael and Wang, Lijing and Yin, Zhen and Schoedl, Nathan and Hibbs, Matthew and Zhang, Allan},
   journal={EGUsphere},
   pages={1--27},
-  year={2022},
+  year={2023},
   publisher={Copernicus GmbH}
 }
 
