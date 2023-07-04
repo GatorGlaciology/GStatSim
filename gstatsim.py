@@ -595,13 +595,15 @@ class Covariance:
                 covariance
         """
         
-        if vtype == 'Exponential':
+        if vtype.lower() == 'Exponential':
             c = (sill - nug)*np.exp(-3 * effective_lag)
-        elif vtype == 'Gaussian':
+        elif vtype.lower() == 'Gaussian':
             c = (sill - nug)*np.exp(-3 * np.square(effective_lag))
-        elif vtype == 'Spherical':
+        elif vtype.lower() == 'Spherical':
             c = sill - nug - 1.5 * effective_lag + 0.5 * np.power(effective_lag, 3)
             c[effective_lag > 1] = sill - 1
+        else: 
+            raise AttributeError(f"vtype must be 'Exponential', 'Gaussian', or 'Spherical'")
         return c
 
     def make_covariance_matrix(coord, vario, rotation_matrix):
