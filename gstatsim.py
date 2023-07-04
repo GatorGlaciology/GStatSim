@@ -591,18 +591,18 @@ class Covariance:
         Raises
         ------
         AtrributeError : if vtype is not 'Exponential', 'Gaussian', or 'Spherical'
-        
+
         Returns
         -------
             c : numpy.ndarray
                 covariance
         """
         
-        if vtype.lower() == 'Exponential':
+        if vtype.lower() == 'exponential':
             c = (sill - nug)*np.exp(-3 * effective_lag)
-        elif vtype.lower() == 'Gaussian':
+        elif vtype.lower() == 'gaussian':
             c = (sill - nug)*np.exp(-3 * np.square(effective_lag))
-        elif vtype.lower() == 'Spherical':
+        elif vtype.lower() == 'spherical':
             c = sill - nug - 1.5 * effective_lag + 0.5 * np.power(effective_lag, 3)
             c[effective_lag > 1] = sill - 1
         else: 
