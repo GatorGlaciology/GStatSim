@@ -588,6 +588,9 @@ class Covariance:
                 nugget of variogram
             vtype : string
                 type of variogram model (Exponential, Gaussian, or Spherical)
+        Raises
+        ------
+        AtrributeError : if vtype is not 'Exponential', 'Gaussian', or 'Spherical'
         
         Returns
         -------
