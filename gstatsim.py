@@ -588,20 +588,25 @@ class Covariance:
                 nugget of variogram
             vtype : string
                 type of variogram model (Exponential, Gaussian, or Spherical)
-        
+        Raises
+        ------
+        AtrributeError : if vtype is not 'Exponential', 'Gaussian', or 'Spherical'
+
         Returns
         -------
             c : numpy.ndarray
                 covariance
         """
         
-        if vtype == 'Exponential':
+        if vtype.lower() == 'exponential':
             c = (sill - nug)*np.exp(-3 * effective_lag)
-        elif vtype == 'Gaussian':
+        elif vtype.lower() == 'gaussian':
             c = (sill - nug)*np.exp(-3 * np.square(effective_lag))
-        elif vtype == 'Spherical':
+        elif vtype.lower() == 'spherical':
             c = sill - nug - 1.5 * effective_lag + 0.5 * np.power(effective_lag, 3)
             c[effective_lag > 1] = sill - 1
+        else: 
+            raise AttributeError(f"vtype must be 'Exponential', 'Gaussian', or 'Spherical'")
         return c
 
     def make_covariance_matrix(coord, vario, rotation_matrix):
