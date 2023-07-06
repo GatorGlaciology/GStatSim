@@ -635,7 +635,7 @@ class Covariance:
         vtype = vario[5]
         mat = np.matmul(coord, rotation_matrix)
         effective_lag = pairwise_distances(mat,mat) 
-        covariance_matrix = Covariance.covar(effective_lag, sill, nug, vtype) 
+        covariance_matrix = Covariance.covar(effective_lag, sill, nug, vtype)
 
         return covariance_matrix
 
@@ -732,31 +732,24 @@ class Interpolation:
                 # gather nearest points within radius
                 nearest = NearestNeighbor.nearest_neighbor_search(radius, num_points, 
                                                   prediction_grid[z], df[['X','Y','Z']])
-                norm_data_val = nearest[:,-1] 
-                norm_data_val = norm_data_val.reshape(len(norm_data_val),1)
-                norm_data_val = norm_data_val.T
-                xy_val = nearest[:, :-1]   
-                new_num_pts = len(nearest) 
+                norm_data_val = nearest[:,-1]
+                xy_val = nearest[:, :-1]
+                new_num_pts = len(nearest)
 
-                covariance_matrix = np.zeros(shape=((new_num_pts, new_num_pts)))
+                # covariance between data
                 covariance_matrix = Covariance.make_covariance_matrix(xy_val, 
                                                            vario, rotation_matrix)
 
-                # covariance between data and uknown
-                covariance_array = np.zeros(shape=(new_num_pts))
-                k_weights = np.zeros(shape=(new_num_pts))
+                # covariance between data and unknown
                 covariance_array = Covariance.make_covariance_array(xy_val, 
                                                          np.tile(prediction_grid[z], new_num_pts), 
                                                          vario, rotation_matrix)
                 
-                # covariance between data points
-                covariance_matrix.reshape(((new_num_pts)), ((new_num_pts)))
                 k_weights, res, rank, s = np.linalg.lstsq(covariance_matrix, 
                                                           covariance_array, rcond = None)
 
                 est_sk[z] = mean_1 + (np.sum(k_weights*(norm_data_val[:] - mean_1))) 
                 var_sk[z] = var_1 - np.sum(k_weights*covariance_array)
-                #var_sk[z] = np.absolute(var_sk[z])
                 var_sk[var_sk < 0] = 0
             else:
                 est_sk[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
@@ -804,7 +797,7 @@ class Interpolation:
 
         df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"}) 
         var_1 = vario[4]
-        est_ok = np.zeros(shape=len(prediction_grid)) 
+        est_ok = np.zeros(shape=len(prediction_grid))
         var_ok = np.zeros(shape=len(prediction_grid))
 
         for z, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
@@ -814,21 +807,19 @@ class Interpolation:
                 # find nearest data points
                 nearest = NearestNeighbor.nearest_neighbor_search(radius, num_points, 
                                                   prediction_grid[z], df[['X','Y','Z']])    
-                norm_data_val = nearest[:,-1] 
-                local_mean = np.mean(norm_data_val) 
-                norm_data_val = norm_data_val.reshape(len(norm_data_val),1)
-                norm_data_val = norm_data_val.T
+                norm_data_val = nearest[:,-1]
+                local_mean = np.mean(norm_data_val)
                 xy_val = nearest[:,:-1]
-                new_num_pts = len(nearest) 
+                new_num_pts = len(nearest)
 
-                # left hand side (covariance between data)
+                # covariance between data
                 covariance_matrix = np.zeros(shape=((new_num_pts+1, new_num_pts+1))) 
                 covariance_matrix[0:new_num_pts,0:new_num_pts] = Covariance.make_covariance_matrix(xy_val, 
                                                                                         vario, rotation_matrix)
                 covariance_matrix[new_num_pts,0:new_num_pts] = 1
                 covariance_matrix[0:new_num_pts,new_num_pts] = 1
 
-                # Set up Right Hand Side (covariance between data and unknown)
+                # covariance between data and unknown
                 covariance_array = np.zeros(shape=(new_num_pts+1)) 
                 k_weights = np.zeros(shape=(new_num_pts+1))
                 covariance_array[0:new_num_pts] = Covariance.make_covariance_array(xy_val, 
@@ -841,7 +832,6 @@ class Interpolation:
                 
                 est_ok[z] = local_mean + np.sum(k_weights[0:new_num_pts]*(norm_data_val[:] - local_mean)) 
                 var_ok[z] = var_1 - np.sum(k_weights[0:new_num_pts]*covariance_array[0:new_num_pts])
-                #var_ok[z] = np.absolute(var_ok[z])
                 var_ok[var_ok < 0] = 0
             else:
                 est_ok[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
@@ -904,17 +894,14 @@ class Interpolation:
                 xy_val = nearest[:,:-1]   
                 new_num_pts = len(nearest) 
 
-                # left hand side (covariance between data)
-                covariance_matrix = np.zeros(shape=((new_num_pts, new_num_pts))) 
+                # covariance between data
                 covariance_matrix = Covariance.make_covariance_matrix(xy_val, vario, rotation_matrix)
 
-                # Set up Right Hand Side (covariance between data and unknown)
-                covariance_array = np.zeros(shape=(new_num_pts)) 
-                k_weights = np.zeros(shape=(new_num_pts))
+                # covariance between data and unknown
                 covariance_array = Covariance.make_covariance_array(xy_val, 
                                                          np.tile(prediction_grid[z], new_num_pts), 
                                                          vario, rotation_matrix)
-                covariance_matrix.reshape(((new_num_pts)), ((new_num_pts)))
+                
                 k_weights, res, rank, s = np.linalg.lstsq(covariance_matrix, 
                                                           covariance_array, rcond = None) 
                 # get estimates
@@ -994,7 +981,7 @@ class Interpolation:
                 covariance_matrix[new_num_pts,0:new_num_pts] = 1
                 covariance_matrix[0:new_num_pts,new_num_pts] = 1
 
-                # covariance between data and unknown
+                # Set up Right Hand Side (covariance between data and unknown)
                 covariance_array = np.zeros(shape=(new_num_pts+1))
                 k_weights = np.zeros(shape=(new_num_pts+1))
                 covariance_array[0:new_num_pts] = Covariance.make_covariance_array(xy_val, 
@@ -1180,8 +1167,6 @@ class Interpolation:
                 nearest_second = NearestNeighbor.nearest_neighbor_secondary(prediction_grid[z], 
                                                                             df2[['X','Y','Z']]) 
                 norm_data_val = nearest[:,-1] 
-                norm_data_val = norm_data_val.reshape(len(norm_data_val),1)
-                norm_data_val = norm_data_val.T
                 norm_data_val = np.append(norm_data_val, [nearest_second[-1]]) 
                 xy_val = nearest[:, :-1] 
                 xy_second = nearest_second[:-1] 
@@ -1292,12 +1277,10 @@ class Interpolation:
                                                                   df1[['X','Y','Z']]) 
                 nearest_second = NearestNeighbor.nearest_neighbor_secondary(prediction_grid[z], 
                                                                             df2[['X','Y','Z']])
-                norm_data_val = nearest[:,-1] 
-                norm_data_val = norm_data_val.reshape(len(norm_data_val),1)
-                norm_data_val = norm_data_val.T
+                norm_data_val = nearest[:,-1]
                 norm_data_val = np.append(norm_data_val, [nearest_second[-1]]) 
                 xy_val = nearest[:, :-1] 
-                xy_second = nearest_second[:-1] #
+                xy_second = nearest_second[:-1]
                 xy_val = np.append(xy_val, [xy_second], axis = 0) 
                 new_num_pts = len(nearest)
 
@@ -1307,7 +1290,7 @@ class Interpolation:
                                                                                                         vario, rotation_matrix) 
 
                 # covariance between data and unknown
-                covariance_array = np.zeros(shape=(new_num_pts + 1)) 
+                covariance_array = np.zeros(shape=(new_num_pts + 1))
                 k_weights = np.zeros(shape=(new_num_pts + 1))
                 covariance_array[0:new_num_pts+1] = Covariance.make_covariance_array(xy_val, 
                                                                                      np.tile(prediction_grid[z], 
