@@ -50,13 +50,15 @@ We have created tutorials that are designed to provide an intuitive understandin
 
 Michael Field, University of Florida
 
-Lijing Wang, Stanford University
+Lijing Wang, Lawrence Berkeley National Laboratory
 
 (Zhen) David Yin, Stanford University
 
 Nathan Schoedl, University of Florida
 
 Matthew Hibbs, University of Florida
+
+Mirko Malicke, Karlsruhe Institute of Technology
 
 # Usage
 
