@@ -678,7 +678,7 @@ class Covariance:
 
 class Interpolation: 
 
-    def skrige(prediction_grid, df, xx, yy, zz, num_points, vario, radius, verbose=True):
+    def skrige(prediction_grid, df, xx, yy, zz, num_points, vario, radius, quiet=False):
         """
         Simple kriging interpolation
         
@@ -702,9 +702,9 @@ class Interpolation:
                 vtype is a string that can be either 'Exponential', 'Spherical', or 'Gaussian'
             radius : int, float
                 search radius
-            verbose : bool
-                If True, a progress bar will be printed to the console.
-                Default is True.
+            quiet : bool
+                If False, a progress bar will be printed to the console.
+               Default is False
         
         Returns
         -------
@@ -727,7 +727,7 @@ class Interpolation:
         var_sk = np.zeros(shape=len(prediction_grid))
 
         # build the iterator
-        if verbose:
+        if not quiet:
             _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
         else:
             _iterator = enumerate(prediction_grid)
@@ -764,7 +764,7 @@ class Interpolation:
                 var_sk[z] = 0
         return est_sk, var_sk
 
-    def okrige(prediction_grid, df, xx, yy, zz, num_points, vario, radius, verbose=True):
+    def okrige(prediction_grid, df, xx, yy, zz, num_points, vario, radius, quiet=False):
         """
         Ordinary kriging interpolation
         
@@ -788,9 +788,9 @@ class Interpolation:
                 vtype is a string that can be either 'Exponential', 'Spherical', or 'Gaussian'
             radius : int, float
                 search radius
-            verbose : bool
-                If True, a progress bar will be printed to the console.
-                Default is True.
+            quiet : bool
+                If False, a progress bar will be printed to the console.
+               Default is False
         
         Returns
         -------
@@ -812,7 +812,7 @@ class Interpolation:
         var_ok = np.zeros(shape=len(prediction_grid))
 
         # build the iterator
-        if verbose:
+        if not quiet:
             _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
         else:
             _iterator = enumerate(prediction_grid)
@@ -855,7 +855,7 @@ class Interpolation:
                 var_ok[z] = 0   
         return est_ok, var_ok
   
-    def skrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius, verbose=True):
+    def skrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius, quiet=False):
         """
         Sequential Gaussian simulation using simple kriging 
         
@@ -879,9 +879,9 @@ class Interpolation:
                 vtype is a string that can be either 'Exponential', 'Spherical', or 'Gaussian'
             radius : int, float
                 search radius
-            verbose : bool
-                If True, a progress bar will be printed to the console.
-                Default is True.
+            quiet : bool
+                If False, a progress bar will be printed to the console.
+               Default is False
         
         Returns
         -------
@@ -903,7 +903,7 @@ class Interpolation:
         sgs = np.zeros(shape=len(prediction_grid)) 
 
         # build the iterator
-        if verbose:
+        if not quiet:
             _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
         else:
             _iterator = enumerate(prediction_grid)
@@ -944,7 +944,7 @@ class Interpolation:
 
         return sgs
    
-    def okrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius, verbose=True):
+    def okrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius, quiet=False):
         """
         Sequential Gaussian simulation using ordinary kriging 
         
@@ -968,9 +968,9 @@ class Interpolation:
                 vtype is a string that can be either 'Exponential', 'Spherical', or 'Gaussian'
             radius : int, float
                 search radius
-            verbose : bool
-                If True, a progress bar will be printed to the console.
-                Default is True.
+            quiet : bool
+                If False, a progress bar will be printed to the console.
+               Default is False
         
         Returns
         -------
@@ -991,7 +991,7 @@ class Interpolation:
         sgs = np.zeros(shape=len(prediction_grid))  
 
         # build the iterator
-        if verbose:
+        if not quiet:
             _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
         else:
             _iterator = enumerate(prediction_grid)
@@ -1041,7 +1041,7 @@ class Interpolation:
         return sgs
 
 
-    def cluster_sgs(prediction_grid, df, xx, yy, zz, kk, num_points, df_gamma, radius, verbose=True):
+    def cluster_sgs(prediction_grid, df, xx, yy, zz, kk, num_points, df_gamma, radius, quiet=False):
         """
         Sequential Gaussian simulation where variogram parameters are different for each k cluster. Uses simple kriging 
         
@@ -1067,9 +1067,9 @@ class Interpolation:
                 vtype is a string that can be either 'Exponential', 'Spherical', or 'Gaussian'
             radius : int, float
                 search radius
-            verbose : bool
-                If True, a progress bar will be printed to the console.
-                Default is True.
+            quiet : bool
+                If False, a progress bar will be printed to the console.
+               Default is False
         
         Returns
         -------
@@ -1084,7 +1084,7 @@ class Interpolation:
         sgs = np.zeros(shape=len(prediction_grid)) 
 
         # build the iterator
-        if verbose:
+        if not quiet:
             _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
         else:
             _iterator = enumerate(prediction_grid)
@@ -1139,7 +1139,7 @@ class Interpolation:
 
         return sgs
 
-    def cokrige_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef, verbose=True):
+    def cokrige_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef, quiet=False):
         """
         Simple collocated cokriging under Markov model 1 assumptions
         
@@ -1173,9 +1173,9 @@ class Interpolation:
                 search radius
             corrcoef : float
                 correlation coefficient between primary and secondary data
-            verbose : bool
-                If True, a progress bar will be printed to the console.
-                Default is True.
+            quiet : bool
+                If False, a progress bar will be printed to the console.
+               Default is False
         
         Returns
         -------
@@ -1204,7 +1204,7 @@ class Interpolation:
         var_cokrige = np.zeros(shape=len(prediction_grid))
 
         # build the iterator
-        if verbose:
+        if not quiet:
             _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
         else:
             _iterator = enumerate(prediction_grid)
@@ -1259,7 +1259,7 @@ class Interpolation:
 
         return est_cokrige, var_cokrige
 
-    def cosim_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef, verbose=True):
+    def cosim_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef, quiet=False):
         """
         Cosimulation under Markov model 1 assumptions
         
@@ -1293,9 +1293,9 @@ class Interpolation:
                 search radius
             corrcoef : float
                 correlation coefficient between primary and secondary data
-            verbose : bool
-                If True, a progress bar will be printed to the console.
-                Default is True.
+            quiet : bool
+                If False, a progress bar will be printed to the console.
+               Default is False
 
         Returns
         -------
@@ -1322,7 +1322,7 @@ class Interpolation:
         cosim = np.zeros(shape=len(prediction_grid))
 
         # build the iterator
-        if verbose:
+        if not quiet:
             _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
         else:
             _iterator = enumerate(prediction_grid)
