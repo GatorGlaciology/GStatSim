@@ -22,7 +22,6 @@ from sklearn.metrics import pairwise_distances
 ############################
 
 class Gridding:
-
     def prediction_grid(xmin, xmax, ymin, ymax, res):
         """
         Make prediction grid
@@ -679,7 +678,7 @@ class Covariance:
 
 class Interpolation: 
 
-    def skrige(prediction_grid, df, xx, yy, zz, num_points, vario, radius):
+    def skrige(prediction_grid, df, xx, yy, zz, num_points, vario, radius, verbose=True):
         """
         Simple kriging interpolation
         
@@ -703,6 +702,9 @@ class Interpolation:
                 vtype is a string that can be either 'Exponential', 'Spherical', or 'Gaussian'
             radius : int, float
                 search radius
+            verbose : bool
+                If True, a progress bar will be printed to the console.
+                Default is True.
         
         Returns
         -------
@@ -724,8 +726,14 @@ class Interpolation:
         est_sk = np.zeros(shape=len(prediction_grid)) 
         var_sk = np.zeros(shape=len(prediction_grid))
 
+        # build the iterator
+        if verbose:
+            _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
+        else:
+            _iterator = enumerate(prediction_grid)
+
         # for each coordinate in the prediction grid
-        for z, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
+        for z, predxy in _iterator:
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values,axis = 1)
             if np.sum(test_idx==2)==0:
                 
@@ -756,7 +764,7 @@ class Interpolation:
                 var_sk[z] = 0
         return est_sk, var_sk
 
-    def okrige(prediction_grid, df, xx, yy, zz, num_points, vario, radius):
+    def okrige(prediction_grid, df, xx, yy, zz, num_points, vario, radius, verbose=True):
         """
         Ordinary kriging interpolation
         
@@ -780,6 +788,9 @@ class Interpolation:
                 vtype is a string that can be either 'Exponential', 'Spherical', or 'Gaussian'
             radius : int, float
                 search radius
+            verbose : bool
+                If True, a progress bar will be printed to the console.
+                Default is True.
         
         Returns
         -------
@@ -800,7 +811,13 @@ class Interpolation:
         est_ok = np.zeros(shape=len(prediction_grid))
         var_ok = np.zeros(shape=len(prediction_grid))
 
-        for z, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
+        # build the iterator
+        if verbose:
+            _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
+        else:
+            _iterator = enumerate(prediction_grid)
+
+        for z, predxy in _iterator:
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values,axis = 1)
             if np.sum(test_idx==2)==0: 
                 
@@ -838,7 +855,7 @@ class Interpolation:
                 var_ok[z] = 0   
         return est_ok, var_ok
   
-    def skrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius):
+    def skrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius, verbose=True):
         """
         Sequential Gaussian simulation using simple kriging 
         
@@ -862,6 +879,9 @@ class Interpolation:
                 vtype is a string that can be either 'Exponential', 'Spherical', or 'Gaussian'
             radius : int, float
                 search radius
+            verbose : bool
+                If True, a progress bar will be printed to the console.
+                Default is True.
         
         Returns
         -------
@@ -882,7 +902,13 @@ class Interpolation:
         var_1 = vario[4]
         sgs = np.zeros(shape=len(prediction_grid)) 
 
-        for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
+        # build the iterator
+        if verbose:
+            _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
+        else:
+            _iterator = enumerate(prediction_grid)
+
+        for idx, predxy in _iterator:
             z = xyindex[idx] 
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values, axis=1)
             if np.sum(test_idx==2)==0: 
@@ -918,7 +944,7 @@ class Interpolation:
 
         return sgs
    
-    def okrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius):
+    def okrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius, verbose=True):
         """
         Sequential Gaussian simulation using ordinary kriging 
         
@@ -942,6 +968,9 @@ class Interpolation:
                 vtype is a string that can be either 'Exponential', 'Spherical', or 'Gaussian'
             radius : int, float
                 search radius
+            verbose : bool
+                If True, a progress bar will be printed to the console.
+                Default is True.
         
         Returns
         -------
@@ -961,7 +990,13 @@ class Interpolation:
         var_1 = vario[4]
         sgs = np.zeros(shape=len(prediction_grid))  
 
-        for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
+        # build the iterator
+        if verbose:
+            _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
+        else:
+            _iterator = enumerate(prediction_grid)
+
+        for idx, predxy in _iterator:
             z = xyindex[idx] 
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values,axis = 1)
             if np.sum(test_idx==2)==0:
@@ -1006,7 +1041,7 @@ class Interpolation:
         return sgs
 
 
-    def cluster_sgs(prediction_grid, df, xx, yy, zz, kk, num_points, df_gamma, radius):
+    def cluster_sgs(prediction_grid, df, xx, yy, zz, kk, num_points, df_gamma, radius, verbose=True):
         """
         Sequential Gaussian simulation where variogram parameters are different for each k cluster. Uses simple kriging 
         
@@ -1032,6 +1067,9 @@ class Interpolation:
                 vtype is a string that can be either 'Exponential', 'Spherical', or 'Gaussian'
             radius : int, float
                 search radius
+            verbose : bool
+                If True, a progress bar will be printed to the console.
+                Default is True.
         
         Returns
         -------
@@ -1045,7 +1083,13 @@ class Interpolation:
         mean_1 = np.average(df["Z"].values) 
         sgs = np.zeros(shape=len(prediction_grid)) 
 
-        for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
+        # build the iterator
+        if verbose:
+            _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
+        else:
+            _iterator = enumerate(prediction_grid)
+
+        for idx, predxy in _iterator:
             z = xyindex[idx] 
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values,axis = 1)
             if np.sum(test_idx==2)==0: 
@@ -1095,7 +1139,7 @@ class Interpolation:
 
         return sgs
 
-    def cokrige_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef):
+    def cokrige_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef, verbose=True):
         """
         Simple collocated cokriging under Markov model 1 assumptions
         
@@ -1129,6 +1173,9 @@ class Interpolation:
                 search radius
             corrcoef : float
                 correlation coefficient between primary and secondary data
+            verbose : bool
+                If True, a progress bar will be printed to the console.
+                Default is True.
         
         Returns
         -------
@@ -1156,7 +1203,13 @@ class Interpolation:
         est_cokrige = np.zeros(shape=len(prediction_grid)) 
         var_cokrige = np.zeros(shape=len(prediction_grid))
 
-        for z, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
+        # build the iterator
+        if verbose:
+            _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
+        else:
+            _iterator = enumerate(prediction_grid)
+
+        for z, predxy in _iterator:
             test_idx = np.sum(prediction_grid[z]==df1[['X', 'Y']].values,axis = 1)
             if np.sum(test_idx==2)==0: #
                 
@@ -1206,7 +1259,7 @@ class Interpolation:
 
         return est_cokrige, var_cokrige
 
-    def cosim_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef):
+    def cosim_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef, verbose=True):
         """
         Cosimulation under Markov model 1 assumptions
         
@@ -1240,7 +1293,10 @@ class Interpolation:
                 search radius
             corrcoef : float
                 correlation coefficient between primary and secondary data
-        
+            verbose : bool
+                If True, a progress bar will be printed to the console.
+                Default is True.
+
         Returns
         -------
             cosim : numpy.ndarray
@@ -1265,8 +1321,14 @@ class Interpolation:
    
         cosim = np.zeros(shape=len(prediction_grid))
 
+        # build the iterator
+        if verbose:
+            _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
+        else:
+            _iterator = enumerate(prediction_grid)
+
         # for each coordinate in the prediction grid
-        for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True)):
+        for idx, predxy in _iterator:
             z = xyindex[idx]
             test_idx = np.sum(prediction_grid[z]==df1[['X', 'Y']].values,axis = 1)
             if np.sum(test_idx==2)==0:
