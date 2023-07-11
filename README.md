@@ -10,6 +10,8 @@ GStatSim is a Python package specifically designed for geostatistical interpolat
 
 We have created Jupyter Book tutorials here: https://gatorglaciology.github.io/gstatsimbook/intro.html
 
+See our paper here: https://doi.org/10.5194/gmd-16-3765-2023 
+
 In its current state, the demos focus on the geostatistical simulation of subglacial topography. However, these protocols could be applied to a number geoscientific topics.
 
 We will continuously develop new tools and tutorials to address specific technical challenges in geostatistics. Do you have feedback or suggestions? Specific things that we should account for? Feel free to contact me at emackie@ufl.edu. Our goal is to create tools that are useful and accessible, so we welcome your thoughts and insight.
@@ -89,17 +91,19 @@ GStatSim is well-suited for educational use. Please contact us if you plan on us
 
 # Cite as
 
-MacKie, E. J., Field, M., Wang, L., Yin, Z., Schoedl, N., Hibbs, M., & Zhang, A. (2023). GStatSim V1. 0: a Python package for geostatistical interpolation and conditional simulation. EGUsphere, 1-27.
+MacKie, E. J., Field, M., Wang, L., Yin, Z., Schoedl, N., Hibbs, M., & Zhang, A. (2023). GStatSim V1. 0: a Python package for geostatistical interpolation and conditional simulation. Geoscientific Model Development, 16(13), 3765-3783.
 
 or
 
-@article{mackie2022gstatsim,
+@article{mackie2023gstatsim,
   title={GStatSim V1. 0: a Python package for geostatistical interpolation and conditional simulation},
-  author={MacKie, Emma Johanne and Field, Michael and Wang, Lijing and Yin, Zhen and Schoedl, Nathan and Hibbs, Matthew and Zhang, Allan},
-  journal={EGUsphere},
-  pages={1--27},
+  author={MacKie, Emma J and Field, Michael and Wang, Lijing and Yin, Zhen and Schoedl, Nathan and Hibbs, Matthew and Zhang, Allan},
+  journal={Geoscientific Model Development},
+  volume={16},
+  number={13},
+  pages={3765--3783},
   year={2023},
-  publisher={Copernicus GmbH}
+  publisher={Copernicus Publications G{\"o}ttingen, Germany}
 }
 
 # Datasets
