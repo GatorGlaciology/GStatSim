@@ -83,7 +83,7 @@ or
 * Matplotlib
 * SciKit-GStat
 
-These can all be installed using the command *pip install (package name)*. We have included a plot_utils.py file with plotting routines.
+These can all be installed using the command *pip install (package name)*. 
 
 # Educational use
 
