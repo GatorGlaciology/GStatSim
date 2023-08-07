@@ -45,8 +45,8 @@ class Gridding:
                 x,y array of coordinates
         """ 
         
-        cols = np.rint((xmax - xmin + res)/res)
-        rows = np.rint((ymax - ymin + res)/res)  
+        cols = np.ceil((xmax - xmin + res)/res)
+        rows = np.ceil((ymax - ymin + res)/res)  
         x = np.linspace(xmin, xmin+(cols*res), num=int(cols), endpoint=False)
         y = np.linspace(ymin, ymin+(rows*res), num=int(rows), endpoint=False)
         xx, yy = np.meshgrid(x,y) 
@@ -84,8 +84,8 @@ class Gridding:
                 number of columns
         """ 
         
-        cols = np.rint((xmax - xmin)/res) 
-        rows = np.rint((ymax - ymin)/res)  
+        cols = np.ceil((xmax - xmin)/res) 
+        rows = np.ceil((ymax - ymin)/res)  
         rows = rows.astype(int)
         cols = cols.astype(int)
         x = np.arange(xmin,xmax,res); y = np.arange(ymin,ymax,res)
