@@ -726,14 +726,8 @@ class Interpolation:
         est_sk = np.zeros(shape=len(prediction_grid)) 
         var_sk = np.zeros(shape=len(prediction_grid))
 
-        # build the iterator
-        if not quiet:
-            _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
-        else:
-            _iterator = enumerate(prediction_grid)
-
         # for each coordinate in the prediction grid
-        for z, predxy in _iterator:
+        for z, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True, disable=quiet)):
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values,axis = 1)
             if np.sum(test_idx==2)==0:
                 
@@ -811,13 +805,7 @@ class Interpolation:
         est_ok = np.zeros(shape=len(prediction_grid))
         var_ok = np.zeros(shape=len(prediction_grid))
 
-        # build the iterator
-        if not quiet:
-            _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
-        else:
-            _iterator = enumerate(prediction_grid)
-
-        for z, predxy in _iterator:
+        for z, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True, disable=quiet)):
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values,axis = 1)
             if np.sum(test_idx==2)==0: 
                 
@@ -902,13 +890,7 @@ class Interpolation:
         var_1 = vario[4]
         sgs = np.zeros(shape=len(prediction_grid)) 
 
-        # build the iterator
-        if not quiet:
-            _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
-        else:
-            _iterator = enumerate(prediction_grid)
-
-        for idx, predxy in _iterator:
+        for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True, disable=quiet)):
             z = xyindex[idx] 
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values, axis=1)
             if np.sum(test_idx==2)==0: 
@@ -990,13 +972,7 @@ class Interpolation:
         var_1 = vario[4]
         sgs = np.zeros(shape=len(prediction_grid))  
 
-        # build the iterator
-        if not quiet:
-            _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
-        else:
-            _iterator = enumerate(prediction_grid)
-
-        for idx, predxy in _iterator:
+        for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True, disable=quiet)):
             z = xyindex[idx] 
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values,axis = 1)
             if np.sum(test_idx==2)==0:
@@ -1083,13 +1059,7 @@ class Interpolation:
         mean_1 = np.average(df["Z"].values) 
         sgs = np.zeros(shape=len(prediction_grid)) 
 
-        # build the iterator
-        if not quiet:
-            _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
-        else:
-            _iterator = enumerate(prediction_grid)
-
-        for idx, predxy in _iterator:
+        for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True, disable=quiet)):
             z = xyindex[idx] 
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values,axis = 1)
             if np.sum(test_idx==2)==0: 
@@ -1203,13 +1173,7 @@ class Interpolation:
         est_cokrige = np.zeros(shape=len(prediction_grid)) 
         var_cokrige = np.zeros(shape=len(prediction_grid))
 
-        # build the iterator
-        if not quiet:
-            _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
-        else:
-            _iterator = enumerate(prediction_grid)
-
-        for z, predxy in _iterator:
+        for z, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True, disable=quiet)):
             test_idx = np.sum(prediction_grid[z]==df1[['X', 'Y']].values,axis = 1)
             if np.sum(test_idx==2)==0: #
                 
@@ -1321,14 +1285,8 @@ class Interpolation:
    
         cosim = np.zeros(shape=len(prediction_grid))
 
-        # build the iterator
-        if not quiet:
-            _iterator = enumerate(tqdm(prediction_grid, position=0, leave=True))
-        else:
-            _iterator = enumerate(prediction_grid)
-
         # for each coordinate in the prediction grid
-        for idx, predxy in _iterator:
+        for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True, disable=quiet)):
             z = xyindex[idx]
             test_idx = np.sum(prediction_grid[z]==df1[['X', 'Y']].values,axis = 1)
             if np.sum(test_idx==2)==0:
