@@ -718,7 +718,14 @@ class Interpolation:
         azimuth = vario[0]
         major_range = vario[2]
         minor_range = vario[3]
-        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) 
+        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range)
+
+        if 'X' in df.columns and xx != 'X':
+            df = df.drop(columns=['X'])
+        if 'Y' in df.columns and yy != 'Y':
+            df = df.drop(columns=['Y'])
+        if 'Z' in df.columns and zz != 'Z':
+            df = df.drop(columns=['Z'])
 
         df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"})   
         mean_1 = df['Z'].mean() 
@@ -798,7 +805,14 @@ class Interpolation:
         azimuth = vario[0]
         major_range = vario[2]
         minor_range = vario[3]
-        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) 
+        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range)
+
+        if 'X' in df.columns and xx != 'X':
+            df = df.drop(columns=['X'])
+        if 'Y' in df.columns and yy != 'Y':
+            df = df.drop(columns=['Y'])
+        if 'Z' in df.columns and zz != 'Z':
+            df = df.drop(columns=['Z'])
 
         df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"}) 
         var_1 = vario[4]
@@ -881,7 +895,14 @@ class Interpolation:
         azimuth = vario[0]
         major_range = vario[2]
         minor_range = vario[3]
-        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) 
+        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range)
+
+        if 'X' in df.columns and xx != 'X':
+            df = df.drop(columns=['X'])
+        if 'Y' in df.columns and yy != 'Y':
+            df = df.drop(columns=['Y'])
+        if 'Z' in df.columns and zz != 'Z':
+            df = df.drop(columns=['Z'])
 
         df = df.rename(columns = {xx: 'X', yy: 'Y', zz: 'Z'})
         xyindex = np.arange(len(prediction_grid)) 
@@ -964,7 +985,14 @@ class Interpolation:
         azimuth = vario[0]
         major_range = vario[2]
         minor_range = vario[3]
-        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) 
+        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range)
+
+        if 'X' in df.columns and xx != 'X':
+            df = df.drop(columns=['X'])
+        if 'Y' in df.columns and yy != 'Y':
+            df = df.drop(columns=['Y'])
+        if 'Z' in df.columns and zz != 'Z':
+            df = df.drop(columns=['Z'])
 
         df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"}) 
         xyindex = np.arange(len(prediction_grid)) 
@@ -1052,6 +1080,13 @@ class Interpolation:
             sgs : numpy.ndarray
                 simulated value for each coordinate in prediction_grid
         """
+
+        if 'X' in df.columns and xx != 'X':
+            df = df.drop(columns=['X'])
+        if 'Y' in df.columns and yy != 'Y':
+            df = df.drop(columns=['Y'])
+        if 'Z' in df.columns and zz != 'Z':
+            df = df.drop(columns=['Z'])
 
         df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z", kk: "K"})  
         xyindex = np.arange(len(prediction_grid)) 
@@ -1159,7 +1194,21 @@ class Interpolation:
         azimuth = vario[0]
         major_range = vario[2]
         minor_range = vario[3]
-        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range) 
+        rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range)
+
+        if 'X' in df1.columns and xx1 != 'X':
+            df1 = df1.drop(columns=['X'])
+        if 'Y' in df1.columns and yy1 != 'Y':
+            df1 = df1.drop(columns=['Y'])
+        if 'Z' in df1.columns and zz1 != 'Z':
+            df1 = df1.drop(columns=['Z'])
+
+        if 'X' in df2.columns and xx2 != 'X':
+            df2 = df2.drop(columns=['X'])
+        if 'Y' in df2.columns and yy2 != 'Y':
+            df2 = df2.drop(columns=['Y'])
+        if 'Z' in df2.columns and zz2 != 'Z':
+            df2 = df2.drop(columns=['Z'])
 
         df1 = df1.rename(columns = {xx1: "X", yy1: "Y", zz1: "Z"})
         df2 = df2.rename(columns = {xx2: "X", yy2: "Y", zz2: "Z"})
@@ -1272,6 +1321,21 @@ class Interpolation:
         major_range = vario[2]
         minor_range = vario[3]
         rotation_matrix = make_rotation_matrix(azimuth, major_range, minor_range)
+
+        if 'X' in df1.columns and xx1 != 'X':
+            df1 = df1.drop(columns=['X'])
+        if 'Y' in df1.columns and yy1 != 'Y':
+            df1 = df1.drop(columns=['Y'])
+        if 'Z' in df1.columns and zz1 != 'Z':
+            df1 = df1.drop(columns=['Z'])
+
+        if 'X' in df2.columns and xx2 != 'X':
+            df2 = df2.drop(columns=['X'])
+        if 'Y' in df2.columns and yy2 != 'Y':
+            df2 = df2.drop(columns=['Y'])
+        if 'Z' in df2.columns and zz2 != 'Z':
+            df2 = df2.drop(columns=['Z'])
+        
         df1 = df1.rename(columns = {xx1: "X", yy1: "Y", zz1: "Z"}) 
         df2 = df2.rename(columns = {xx2: "X", yy2: "Y", zz2: "Z"})
         xyindex = np.arange(len(prediction_grid)) 
