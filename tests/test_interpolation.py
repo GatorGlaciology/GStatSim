@@ -35,7 +35,7 @@ def test_ordinary_kriging():
     Pred_grid_xy = gs.Gridding.prediction_grid(xmin, xmax, ymin, ymax, res)
 
     # set random seed
-    rng = np.ranodm.default_rng(42)
+    rng = np.random.default_rng(42)
 
     # pick ("random") points from grid
     index_points = rng.choice(
@@ -102,7 +102,7 @@ def test_simple_kriging():
     Pred_grid_xy = gs.Gridding.prediction_grid(xmin, xmax, ymin, ymax, res)
 
     # set random seed
-    rng = np.ranodm.default_rng(42)
+    rng = np.random.default_rng(42)
 
     # pick ("random") points from grid
     index_points = rng.choice(
@@ -176,7 +176,7 @@ def test_sequential_gaussian_simulation_ordinary_kriging():
     # this line can be removed, if we decide to use numpy.random.shuffle instead of random.shuffle
     # random.seed(42)
     # np.random.seed(42)
-    rng = np.ranodm.default_rng(42)
+    rng = np.random.default_rng(42)
 
     # pick ("random") points from grid
     index_points = rng.choice(
@@ -249,7 +249,7 @@ def test_sequential_gaussian_simulation_simple_kriging():
     # this line can be removed, if we decide to use numpy.random.shuffle instead of random.shuffle
     # random.seed(42)
     # np.random.seed(42)
-    rng = np.ranodm.default_rng(42)
+    rng = np.random.default_rng(42)
 
     # pick ("random") points from grid
     index_points = rng.choice(
