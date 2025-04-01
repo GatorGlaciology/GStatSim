@@ -857,7 +857,7 @@ class Interpolation:
                 var_ok[z] = 0   
         return est_ok, var_ok
   
-    def skrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius, quiet=False):
+    def skrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius, rng=None, quiet=False):
         """
         Sequential Gaussian simulation using simple kriging 
         
@@ -891,6 +891,10 @@ class Interpolation:
                 simulated value for each coordinate in prediction_grid
         """
 
+        # make random number generator if not provided
+        if rng is None:
+            rng = np.random.default_rng()
+
         # unpack variogram parameters
         azimuth = vario[0]
         major_range = vario[2]
@@ -906,8 +910,8 @@ class Interpolation:
 
         df = df.rename(columns = {xx: 'X', yy: 'Y', zz: 'Z'})
         xyindex = np.arange(len(prediction_grid)) 
-        random.shuffle(xyindex)
-        mean_1 = df['Z'].mean() 
+        rng.shuffle(xyindex)
+        mean_1 = df['Z'].mean()
         var_1 = vario[4]
         sgs = np.zeros(shape=len(prediction_grid)) 
 
@@ -937,7 +941,7 @@ class Interpolation:
                 est = mean_1 + np.sum(k_weights*(norm_data_val - mean_1)) 
                 var = var_1 - np.sum(k_weights*covariance_array) 
                 var = np.absolute(var) 
-                sgs[z] = np.random.normal(est,math.sqrt(var),1) 
+                sgs[z] = rng.normal(est,math.sqrt(var),1) 
             else:
                 sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
 
@@ -947,7 +951,7 @@ class Interpolation:
 
         return sgs
    
-    def okrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius, quiet=False):
+    def okrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius, rng=None, quiet=False):
         """
         Sequential Gaussian simulation using ordinary kriging 
         
@@ -981,6 +985,10 @@ class Interpolation:
                 simulated value for each coordinate in prediction_grid
         """
 
+        # make random number generator if not provided
+        if rng is None:
+            rng = np.random.default_rng()
+
         # unpack variogram parameters
         azimuth = vario[0]
         major_range = vario[2]
@@ -996,7 +1004,7 @@ class Interpolation:
 
         df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z"}) 
         xyindex = np.arange(len(prediction_grid)) 
-        random.shuffle(xyindex)
+        rng.shuffle(xyindex)
         var_1 = vario[4]
         sgs = np.zeros(shape=len(prediction_grid))  
 
@@ -1035,7 +1043,7 @@ class Interpolation:
                 var = var_1 - np.sum(k_weights[0:new_num_pts]*covariance_array[0:new_num_pts]) 
                 var = np.absolute(var)
 
-                sgs[z] = np.random.normal(est,math.sqrt(var),1) 
+                sgs[z] = rng.normal(est,math.sqrt(var),1) 
             else:
                 sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]] 
 
@@ -1045,7 +1053,7 @@ class Interpolation:
         return sgs
 
 
-    def cluster_sgs(prediction_grid, df, xx, yy, zz, kk, num_points, df_gamma, radius, quiet=False):
+    def cluster_sgs(prediction_grid, df, xx, yy, zz, kk, num_points, df_gamma, radius, rng=None, quiet=False):
         """
         Sequential Gaussian simulation where variogram parameters are different for each k cluster. Uses simple kriging 
         
@@ -1081,6 +1089,10 @@ class Interpolation:
                 simulated value for each coordinate in prediction_grid
         """
 
+        # make random number generator if not provided
+        if rng is None:
+            rng = np.random.default_rng()
+
         if 'X' in df.columns and xx != 'X':
             df = df.drop(columns=['X'])
         if 'Y' in df.columns and yy != 'Y':
@@ -1090,7 +1102,7 @@ class Interpolation:
 
         df = df.rename(columns = {xx: "X", yy: "Y", zz: "Z", kk: "K"})  
         xyindex = np.arange(len(prediction_grid)) 
-        random.shuffle(xyindex)
+        rng.shuffle(xyindex)
         mean_1 = np.average(df["Z"].values) 
         sgs = np.zeros(shape=len(prediction_grid)) 
 
@@ -1133,7 +1145,7 @@ class Interpolation:
                 var = var_1 - np.sum(k_weights*covariance_array)
                 var = np.absolute(var) 
 
-                sgs[z] = np.random.normal(est,math.sqrt(var),1) 
+                sgs[z] = rng.normal(est,math.sqrt(var),1)
             else:
                 sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
                 cluster_number = df['K'].values[np.where(test_idx==2)[0][0]]
@@ -1272,7 +1284,7 @@ class Interpolation:
 
         return est_cokrige, var_cokrige
 
-    def cosim_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef, quiet=False):
+    def cosim_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef, rng=None, quiet=False):
         """
         Cosimulation under Markov model 1 assumptions
         
@@ -1315,6 +1327,9 @@ class Interpolation:
             cosim : numpy.ndarray
                 cosimulation for each point in coordinate grid
         """
+        # make random number generator if not provided
+        if rng is None:
+            rng = np.random.default_rng()
             
         # unpack variogram parameters
         azimuth = vario[0]
@@ -1339,7 +1354,7 @@ class Interpolation:
         df1 = df1.rename(columns = {xx1: "X", yy1: "Y", zz1: "Z"}) 
         df2 = df2.rename(columns = {xx2: "X", yy2: "Y", zz2: "Z"})
         xyindex = np.arange(len(prediction_grid)) 
-        random.shuffle(xyindex)
+        rng.shuffle(xyindex)
 
         mean_1 = np.average(df1['Z']) 
         var_1 = np.var(df1['Z']) # replaced var_1 = vario[4]
@@ -1396,7 +1411,7 @@ class Interpolation:
                 var_cokrige = var_1 - np.sum(k_weights*covariance_array)
                 var_cokrige = np.absolute(var_cokrige) 
 
-                cosim[z] = np.random.normal(est_cokrige,math.sqrt(var_cokrige),1) 
+                cosim[z] = rng.normal(est_cokrige,math.sqrt(var_cokrige),1)
             else:
                 cosim[z] = df1['Z'].values[np.where(test_idx==2)[0][0]]
 
