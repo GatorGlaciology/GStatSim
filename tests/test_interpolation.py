@@ -35,10 +35,10 @@ def test_ordinary_kriging():
     Pred_grid_xy = gs.Gridding.prediction_grid(xmin, xmax, ymin, ymax, res)
 
     # set random seed
-    np.random.seed(42)
+    rng = np.ranodm.default_rng(42)
 
     # pick ("random") points from grid
-    index_points = np.random.choice(
+    index_points = rng.choice(
         range(len(Pred_grid_xy)), size=25, replace=False)
     Pred_grid_xy = Pred_grid_xy[index_points, :]
 
@@ -62,14 +62,14 @@ def test_ordinary_kriging():
     est_SK, var_SK = gs.Interpolation.okrige(
         Pred_grid_xy, df_grid, 'X', 'Y', 'Z', k, vario, rad)
 
-    expected_est = np.array([443.9, 299.5, 356.6, 389.8, 160.5,  82.2, 333.4, 228.8, 413.2,
-                            376., 201.4, 319.4, 286.2, 298.5, 368.8, 399.2, 337., 132.3,
-                            305.9, 247.2, 270.5, 115.1, 417.5, 411.4,  32.7])
+    expected_est = np.array([ 446.2, 416.3, -16.3, 293.8, 267.7, 383.5, 7.9, 350.9,
+                             78.9, -108.3, 484.1, 385.3, 323.4, 386.4, 365.7, 436.7,
+                             421.8, 370.2, 349.3, 170.7, 0.7, 182.5, 385.2, 219.6, 318.8])
 
-    expected_var = np.array([6525.9,     0.,  8308.6, 12133.4, 11820.4,  8437.8, 13252.4,
-                            11871.6, 19809.1,  8048.9,  6762.9, 20021.6, 15386.6, 10189.8,
-                            0.,  6480.3, 12443.7,  5510.,  6256.2, 13197.6,     0.,
-                            10845.6, 17350.8,  3980.5,  8585.3])
+    expected_var = np.array([7645.2, 4755.7, 9880.7, 9882.3, 11269.9, 16169.5, 10920.9,
+                             11398.8, 0., 12246., 0., 21342.3, 7936.8, 4780., 11525.4,
+                             11745.7, 3763.3, 19738.4, 4070.6, 0., 8548.9, 3507.8,
+                             21654.5, 4748.4, 3767.])
 
     # assert
     np.testing.assert_array_almost_equal(est_SK, expected_est, decimal=1)
@@ -102,10 +102,10 @@ def test_simple_kriging():
     Pred_grid_xy = gs.Gridding.prediction_grid(xmin, xmax, ymin, ymax, res)
 
     # set random seed
-    np.random.seed(42)
+    rng = np.ranodm.default_rng(42)
 
     # pick ("random") points from grid
-    index_points = np.random.choice(
+    index_points = rng.choice(
         range(len(Pred_grid_xy)), size=25, replace=False)
     Pred_grid_xy = Pred_grid_xy[index_points, :]
 
@@ -129,14 +129,14 @@ def test_simple_kriging():
     est_SK, var_SK = gs.Interpolation.skrige(
         Pred_grid_xy, df_grid, 'X', 'Y', 'Z', k, vario, rad)
 
-    expected_est = np.array([432.3, 299.5, 354.5, 384.8, 166.9,  82.9, 327.7, 230.1, 333.,
-                            374.8, 208.7, 287., 296.2, 297.1, 368.8, 391.5, 336.4, 133.,
-                            307.3, 249.4, 270.5, 119.2, 369.9, 411.2,  38.1])
+    expected_est = np.array([444.1, 415.3, -9.3, 296., 269.2, 340.9, 15.9, 335.6, 78.9,
+                             -94.3, 484.1, 311.5, 315.4, 386.3, 371.1, 430.5, 421.8, 305.9,
+                             349.8, 170.7, 8.4, 182.5, 290.4, 223.6, 318.9])
 
-    expected_var = np.array([6846.7,     0.,  8367.2, 12287., 12029.1,  8573.8, 13565.,
-                            12098.3, 20816.3,  8134.4,  7099.8, 20588.1, 15810.4, 10312.,
-                            0.,  6739., 12586.4,  5530.8,  6312., 13469.5,     0.,
-                            10969.9, 18156.7,  3992.2,  8701.3])
+    expected_var = np.array([7711.6, 4787.7, 10011.4, 10014.5, 11474.8, 17027.6, 11092.1,
+                             11777.1, 0., 12449.5, 0., 21794.7, 8183.3, 4832.2, 11771.3,
+                             11899.5, 3765.1, 20914.3, 4055.8, 0., 8889.6, 3522.3, 22182.6,
+                             4797.8, 3740.1])
 
     # assert
     np.testing.assert_array_almost_equal(est_SK, expected_est, decimal=1)
@@ -174,11 +174,12 @@ def test_sequential_gaussian_simulation_ordinary_kriging():
 
     # set random seeds
     # this line can be removed, if we decide to use numpy.random.shuffle instead of random.shuffle
-    random.seed(42)
-    np.random.seed(42)
+    # random.seed(42)
+    # np.random.seed(42)
+    rng = np.ranodm.default_rng(42)
 
     # pick ("random") points from grid
-    index_points = np.random.choice(
+    index_points = rng.choice(
         range(len(Pred_grid_xy)), size=25, replace=False)
     Pred_grid_xy = Pred_grid_xy[index_points, :]
 
@@ -199,12 +200,12 @@ def test_sequential_gaussian_simulation_ordinary_kriging():
 
     # ordinary kriging
     sim = gs.Interpolation.okrige_sgs(
-        Pred_grid_xy, df_grid, 'X', 'Y', 'Z', k, vario, rad)
+        Pred_grid_xy, df_grid, 'X', 'Y', 'Z', k, vario, rad, rng=rng)
 
     # as we set the numpy random seed, the simulation is deterministic and we can compare to the following (rounded) results
-    expected_sim = np.array([445.5, 299.5, 358.9, 395.9, 153.5,  78.3, 344.5, 226.1, 432.2,
-                             377.1, 202.9, 319.3, 276.9, 296., 368.8, 405.2, 328.2, 134.6,
-                             307.8, 252.3, 270.5, 117.9, 425., 411.6,  31.2])
+    expected_sim = np.array([444.9, 415.8, -23.7, 301.2, 263.3, 374.9, -6.9, 346.5,
+                             78.9, -106.6, 484.1, 374.8, 321.6, 388.6, 366.8, 440.1,
+                             421.6, 367., 349.6, 170.7, -7.7, 182., 379.8, 221.3, 318.3])
 
     # assert
     np.testing.assert_array_almost_equal(sim, expected_sim, decimal=1)
@@ -246,11 +247,12 @@ def test_sequential_gaussian_simulation_simple_kriging():
 
     # set random seed
     # this line can be removed, if we decide to use numpy.random.shuffle instead of random.shuffle
-    random.seed(42)
-    np.random.seed(42)
+    # random.seed(42)
+    # np.random.seed(42)
+    rng = np.ranodm.default_rng(42)
 
     # pick ("random") points from grid
-    index_points = np.random.choice(
+    index_points = rng.choice(
         range(len(Pred_grid_xy)), size=25, replace=False)
     Pred_grid_xy = Pred_grid_xy[index_points, :]
 
@@ -271,12 +273,12 @@ def test_sequential_gaussian_simulation_simple_kriging():
 
     # simple kriging
     sim = gs.Interpolation.skrige_sgs(
-        Pred_grid_xy, df_grid, 'X', 'Y', 'Z', k, vario, rad)
+        Pred_grid_xy, df_grid, 'X', 'Y', 'Z', k, vario, rad, rng=rng)
 
     # as we set the numpy random seed, the simulation is deterministic and we can compare to the following (rounded) results
-    expected_sim = np.array([440.3, 299.5, 360., 396.7, 152.1,  78.3, 344.5, 225.6, 368.2,
-                             378.1, 205.2, 304.5, 294.2, 296.3, 368.8, 400.4, 329.9, 133.9,
-                             307.4, 252.2, 270.5, 116.5, 403.3, 411.6,  29.1])
+    expected_sim = np.array([445.6, 416.4, -27.6, 300.8, 263.4, 352.5, -7.1, 341.7,
+                             78.9, -110.7, 484.1, 338., 318.1, 388.6, 366.9, 441.4,
+                             421.6, 323., 349.9, 170.7, -4.4, 182., 309.3, 220.7, 318.6])
 
     # assert
     np.testing.assert_array_almost_equal(sim, expected_sim, decimal=1)
