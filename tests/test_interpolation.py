@@ -200,7 +200,7 @@ def test_sequential_gaussian_simulation_ordinary_kriging():
 
     # ordinary kriging
     sim = gs.Interpolation.okrige_sgs(
-        Pred_grid_xy, df_grid, 'X', 'Y', 'Z', k, vario, rad, rng=rng)
+        Pred_grid_xy, df_grid, 'X', 'Y', 'Z', k, vario, rad, seed=rng)
 
     # as we set the numpy random seed, the simulation is deterministic and we can compare to the following (rounded) results
     expected_sim = np.array([444.9, 415.8, -23.7, 301.2, 263.3, 374.9, -6.9, 346.5,
@@ -273,7 +273,7 @@ def test_sequential_gaussian_simulation_simple_kriging():
 
     # simple kriging
     sim = gs.Interpolation.skrige_sgs(
-        Pred_grid_xy, df_grid, 'X', 'Y', 'Z', k, vario, rad, rng=rng)
+        Pred_grid_xy, df_grid, 'X', 'Y', 'Z', k, vario, rad, seed=rng)
 
     # as we set the numpy random seed, the simulation is deterministic and we can compare to the following (rounded) results
     expected_sim = np.array([445.6, 416.4, -27.6, 300.8, 263.4, 352.5, -7.1, 341.7,
