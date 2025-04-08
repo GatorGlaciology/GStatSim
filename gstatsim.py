@@ -10,6 +10,7 @@ import sklearn as sklearn
 from sklearn.neighbors import KDTree
 import math
 from scipy.spatial import distance_matrix
+from scipy.special import kv, gamma
 from scipy.interpolate import Rbf
 from tqdm import tqdm
 import random
@@ -327,6 +328,9 @@ class NearestNeighbor:
             for j, row in enumerate(octant):
                 smallest[i*oct_count+j,:] = row 
         near = smallest[~np.isnan(smallest)].reshape(-1,3) 
+
+        if near.shape[0] == 0:
+            raise ValueError('Unable to find nearest neighbors. Try increasing search radiuis')
         
         return near
     
@@ -374,7 +378,10 @@ class NearestNeighbor:
             octant = data[data.Oct == i].iloc[:oct_count][['X','Y','Z']].values
             for j, row in enumerate(octant):
                 smallest[i*oct_count+j,:] = row 
-        near = smallest[~np.isnan(smallest)].reshape(-1,3) 
+        near = smallest[~np.isnan(smallest)].reshape(-1,3)
+
+        if near.shape[0] == 0:
+            raise ValueError('Unable to find nearest neighbors. Try increasing search radiuis')
         
         return near, cluster_number
 
@@ -573,7 +580,7 @@ def make_rotation_matrix(azimuth, major_range, minor_range):
 
 class Covariance:
     
-    def covar(effective_lag, sill, nug, vtype):
+    def covar(effective_lag, sill, nug, vtype, s=None):
         """
         Compute covariance
         
@@ -586,7 +593,9 @@ class Covariance:
             nug : int, float
                 nugget of variogram
             vtype : string
-                type of variogram model (Exponential, Gaussian, or Spherical)
+                type of variogram model (Exponential, Gaussian, Spherical, or Matern)
+            s : float
+                smoothness for Matern covariance
         Raises
         ------
         AtrributeError : if vtype is not 'Exponential', 'Gaussian', or 'Spherical'
@@ -604,8 +613,12 @@ class Covariance:
         elif vtype.lower() == 'spherical':
             c = sill - nug - 1.5 * effective_lag + 0.5 * np.power(effective_lag, 3)
             c[effective_lag > 1] = sill - 1
+        elif vtype.lower() == 'matern':
+            scale = 0.45246434*np.exp(-0.70449189*s)+1.7863836
+            c = (sill-nug)*2/gamma(s)*np.power(scale*effective_lag*np.sqrt(s), s)*kv(s, 2*scale*effective_lag*np.sqrt(s))
+            c[np.isnan(c)] = sill-nug
         else: 
-            raise AttributeError(f"vtype must be 'Exponential', 'Gaussian', or 'Spherical'")
+            raise AttributeError(f"vtype must be 'Exponential', 'Gaussian', 'Spherical', or Matern")
         return c
 
     def make_covariance_matrix(coord, vario, rotation_matrix):
@@ -632,9 +645,16 @@ class Covariance:
         nug = vario[1]
         sill = vario[4]  
         vtype = vario[5]
+        if vtype.lower() == 'matern':
+            if len(vario) < 7:
+                raise ValueError("smoothness s must be specified for Matern covariance")
+            else:
+                s = vario[6]
+        else:
+            s = None
         mat = np.matmul(coord, rotation_matrix)
-        effective_lag = pairwise_distances(mat,mat) 
-        covariance_matrix = Covariance.covar(effective_lag, sill, nug, vtype)
+        effective_lag = pairwise_distances(mat,mat)
+        covariance_matrix = Covariance.covar(effective_lag, sill, nug, vtype, s=s)
 
         return covariance_matrix
 
@@ -663,10 +683,17 @@ class Covariance:
         nug = vario[1]
         sill = vario[4]
         vtype = vario[5]
+        if vtype.lower() == 'matern':
+            if len(vario) < 7:
+                raise ValueError("smoothness s must be specified for Matern covariance")
+            else:
+                s = vario[6]
+        else:
+            s = None
         mat1 = np.matmul(coord1, rotation_matrix) 
         mat2 = np.matmul(coord2.reshape(-1,2), rotation_matrix) 
         effective_lag = np.sqrt(np.square(mat1 - mat2).sum(axis=1))
-        covariance_array = Covariance.covar(effective_lag, sill, nug, vtype)
+        covariance_array = Covariance.covar(effective_lag, sill, nug, vtype, s=s)
 
         return covariance_array
 
@@ -857,7 +884,7 @@ class Interpolation:
                 var_ok[z] = 0   
         return est_ok, var_ok
   
-    def skrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius, rng=None, quiet=False):
+    def skrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius, seed=None, quiet=False):
         """
         Sequential Gaussian simulation using simple kriging 
         
@@ -892,8 +919,7 @@ class Interpolation:
         """
 
         # make random number generator if not provided
-        if rng is None:
-            rng = np.random.default_rng()
+        rng = get_random_generator(seed)
 
         # unpack variogram parameters
         azimuth = vario[0]
@@ -951,7 +977,7 @@ class Interpolation:
 
         return sgs
    
-    def okrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius, rng=None, quiet=False):
+    def okrige_sgs(prediction_grid, df, xx, yy, zz, num_points, vario, radius, seed=None, quiet=False):
         """
         Sequential Gaussian simulation using ordinary kriging 
         
@@ -986,8 +1012,7 @@ class Interpolation:
         """
 
         # make random number generator if not provided
-        if rng is None:
-            rng = np.random.default_rng()
+        rng = get_random_generator(seed)
 
         # unpack variogram parameters
         azimuth = vario[0]
@@ -1090,8 +1115,7 @@ class Interpolation:
         """
 
         # make random number generator if not provided
-        if rng is None:
-            rng = np.random.default_rng()
+        rng = get_random_generator(seed)
 
         if 'X' in df.columns and xx != 'X':
             df = df.drop(columns=['X'])
@@ -1328,8 +1352,7 @@ class Interpolation:
                 cosimulation for each point in coordinate grid
         """
         # make random number generator if not provided
-        if rng is None:
-            rng = np.random.default_rng()
+        rng = get_random_generator(seed)
             
         # unpack variogram parameters
         azimuth = vario[0]
@@ -1420,8 +1443,24 @@ class Interpolation:
 
         return cosim
 
+def get_random_generator(seed):
+    """
+    Conveniance function to get numpy random number generator for SGS. If seed is None, a random
+    seed is used. If seed is an integer, that integer is used to seed the RNG. If seed is
+    already an instance of a numpy RNG that is returned.
+    """
+    if seed is None:
+        rng = np.random.default_rng()
+    elif isinstance(seed, int):
+        rng = np.random.default_rng(seed=seed)
+    elif isinstance(seed, np.random._generator.Generator):
+        rng = seed
+    else:
+        raise ValueError('Seed should be an integer, a NumPy random Generator, or None')
+    return rng
+
 __all__ = ['Gridding', 'NearestNeighbor', 'Covariance', 'Interpolation', 'rbf_trend', 
-    'adaptive_partitioning', 'make_rotation_matrix']
+    'adaptive_partitioning', 'make_rotation_matrix', 'get_random_generator']
 
 def __dir__():
     return __all__
