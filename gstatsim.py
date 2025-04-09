@@ -615,6 +615,7 @@ class Covariance:
             c[effective_lag > 1] = sill - 1
         elif vtype.lower() == 'matern':
             scale = 0.45246434*np.exp(-0.70449189*s)+1.7863836
+            effective_lag[effective_lag==0.0] = 1e-8
             c = (sill-nug)*2/gamma(s)*np.power(scale*effective_lag*np.sqrt(s), s)*kv(s, 2*scale*effective_lag*np.sqrt(s))
             c[np.isnan(c)] = sill-nug
         else: 
