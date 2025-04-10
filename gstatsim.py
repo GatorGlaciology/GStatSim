@@ -909,6 +909,9 @@ class Interpolation:
                 vtype is a string that can be either 'Exponential', 'Spherical', or 'Gaussian'
             radius : int, float
                 search radius
+            seed : None (default), integer or numpy.random._generator.Generator
+                integer seed for random number generator or instance of it. Default is None in
+                which case a random seed will be used
             quiet : bool
                 If False, a progress bar will be printed to the console.
                Default is False
@@ -1002,6 +1005,9 @@ class Interpolation:
                 vtype is a string that can be either 'Exponential', 'Spherical', or 'Gaussian'
             radius : int, float
                 search radius
+            seed : None (default), integer or numpy.random._generator.Generator
+                integer seed for random number generator or instance of it. Default is None in
+                which case a random seed will be used
             quiet : bool
                 If False, a progress bar will be printed to the console.
                Default is False
@@ -1079,7 +1085,7 @@ class Interpolation:
         return sgs
 
 
-    def cluster_sgs(prediction_grid, df, xx, yy, zz, kk, num_points, df_gamma, radius, rng=None, quiet=False):
+    def cluster_sgs(prediction_grid, df, xx, yy, zz, kk, num_points, df_gamma, radius, seed=None, quiet=False):
         """
         Sequential Gaussian simulation where variogram parameters are different for each k cluster. Uses simple kriging 
         
@@ -1105,6 +1111,9 @@ class Interpolation:
                 vtype is a string that can be either 'Exponential', 'Spherical', or 'Gaussian'
             radius : int, float
                 search radius
+            seed : None (default), integer or numpy.random._generator.Generator
+                integer seed for random number generator or instance of it. Default is None in
+                which case a random seed will be used
             quiet : bool
                 If False, a progress bar will be printed to the console.
                Default is False
@@ -1309,7 +1318,7 @@ class Interpolation:
 
         return est_cokrige, var_cokrige
 
-    def cosim_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef, rng=None, quiet=False):
+    def cosim_mm1(prediction_grid, df1, xx1, yy1, zz1, df2, xx2, yy2, zz2, num_points, vario, radius, corrcoef, seed=None, quiet=False):
         """
         Cosimulation under Markov model 1 assumptions
         
@@ -1343,6 +1352,9 @@ class Interpolation:
                 search radius
             corrcoef : float
                 correlation coefficient between primary and secondary data
+            seed : None (default), integer or numpy.random._generator.Generator
+                integer seed for random number generator or instance of it. Default is None in
+                which case a random seed will be used
             quiet : bool
                 If False, a progress bar will be printed to the console.
                Default is False
