@@ -974,6 +974,7 @@ class Interpolation:
                 sgs[z] = rng.normal(est,math.sqrt(var),1) 
             else:
                 sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
+                continue
 
             coords = prediction_grid[z:z+1,:] 
             df = pd.concat([df,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 
@@ -1077,7 +1078,8 @@ class Interpolation:
 
                 sgs[z] = rng.normal(est,math.sqrt(var),1) 
             else:
-                sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]] 
+                sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
+                continue
 
             coords = prediction_grid[z:z+1,:]
             df = pd.concat([df,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 'Z': [sgs[z]]})], sort=False) 
@@ -1183,6 +1185,7 @@ class Interpolation:
             else:
                 sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
                 cluster_number = df['K'].values[np.where(test_idx==2)[0][0]]
+                continue
 
             coords = prediction_grid[z:z+1,:] 
             df = pd.concat([df,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 
@@ -1450,6 +1453,7 @@ class Interpolation:
                 cosim[z] = rng.normal(est_cokrige,math.sqrt(var_cokrige),1)
             else:
                 cosim[z] = df1['Z'].values[np.where(test_idx==2)[0][0]]
+                continue
 
             coords = prediction_grid[z:z+1,:]
             df1 = pd.concat([df1,pd.DataFrame({'X': [coords[0,0]], 'Y': [coords[0,1]], 'Z': [cosim[z]]})], sort=False) 
