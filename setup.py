@@ -1,6 +1,6 @@
 from setuptools import setup
 
-version = '1.1.2'
+version = '1.1.3'
 
 classifiers = [
     'Programming Language :: Python :: 3',
