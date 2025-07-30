@@ -1,4 +1,4 @@
-<img src ="/images/GatorGlaciologyLogo-01.jpg" width="100" align = "right">
+<img src ="https://github.com/GatorGlaciology/GStatSim/raw/main/images/GatorGlaciologyLogo-01.jpg" width="100" align = "right">
 
 [![Jupyter Book Badge](https://jupyterbook.org/badge.svg)](<https://gatorglaciology.github.io/gstatsimbook/intro.html>)  [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/GatorGlaciology/gstatsimbook/HEAD?urlpath=lab)  ![PyPI](https://img.shields.io/pypi/v/gstatsim?label=pypi%20package) ![PyPI - Downloads](https://img.shields.io/pypi/dm/gstatsim) [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/gstatsim.svg?style=social&label=Follow%20%40GatorGlaciology)](https://twitter.com/GatorGlaciology)
 
@@ -16,7 +16,7 @@ In its current state, the demos focus on the geostatistical simulation of subgla
 
 We will continuously develop new tools and tutorials to address specific technical challenges in geostatistics. Do you have feedback or suggestions? Specific things that we should account for? Feel free to contact me at emackie@ufl.edu. Our goal is to create tools that are useful and accessible, so we welcome your thoughts and insight.
 
-<img src ="/images/GStat-sim_master_figure.png" align = "center">
+<img src ="https://github.com/GatorGlaciology/GStatSim/raw/main/images/GStat-sim_master_figure.png" align = "center">
 
 # Features
 
