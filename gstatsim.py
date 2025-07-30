@@ -318,7 +318,7 @@ class NearestNeighbor:
         data = data[data.dist < radius] 
         data = data.sort_values('dist', ascending = True)
         bins = [-math.pi, -3*math.pi/4, -math.pi/2, -math.pi/4, 0, 
-                math.pi/4, math.pi/2, 3*math.pi/4, math.pi] 
+                math.pi/4, math.pi/2, 3*math.pi/4, math.pi+1e-3] 
         data["Oct"] = pd.cut(data.angles, bins = bins, labels = list(range(8)))
         oct_count = num_points // 8
         smallest = np.ones(shape=(num_points, 3)) * np.nan
