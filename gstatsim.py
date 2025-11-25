@@ -605,19 +605,27 @@ class Covariance:
             c : numpy.ndarray
                 covariance
         """
+
+        structured_sill = sill - nug  # C_struct = C0 - b
         
         if vtype.lower() == 'exponential':
-            c = (sill - nug)*np.exp(-3 * effective_lag)
+            c = structured_sill*np.exp(-3 * effective_lag)
         elif vtype.lower() == 'gaussian':
-            c = (sill - nug)*np.exp(-3 * np.square(effective_lag))
+            c = structured_sill*np.exp(-3 * np.square(effective_lag))
         elif vtype.lower() == 'spherical':
-            c = sill - nug - 1.5 * effective_lag + 0.5 * np.power(effective_lag, 3)
-            c[effective_lag > 1] = sill - 1
+            rho = np.zeros_like(effective_lag)
+            mask = effective_lag <= 1.0
+            h = effective_lag[mask]
+            rho[mask] = 1.0 - 1.5*h + 0.5*np.power(h, 3)
+            c = structured_sill * rho
         elif vtype.lower() == 'matern':
-            scale = 0.45246434*np.exp(-0.70449189*s)+1.7863836
-            effective_lag[effective_lag==0.0] = 1e-8
-            c = (sill-nug)*2/gamma(s)*np.power(scale*effective_lag*np.sqrt(s), s)*kv(s, 2*scale*effective_lag*np.sqrt(s))
-            c[np.isnan(c)] = sill-nug
+            if s is None:
+                raise ValueError("smoothness s must be specified for Matern covariance")
+            scale = 0.45246434*np.exp(-0.70449189*s) + 1.7863836
+            eff = np.array(effective_lag, copy=True)
+            eff[eff == 0.0] = 1e-8
+            c = structured_sill*2/gamma(s)*np.power(scale*eff*np.sqrt(s), s)*kv(s, 2*scale*eff*np.sqrt(s))
+            c[np.isnan(c)] = structured_sill  # ρ(0) = 1 → C(0-) = structured_sill
         else: 
             raise AttributeError(f"vtype must be 'Exponential', 'Gaussian', 'Spherical', or Matern")
         return c
@@ -656,6 +664,7 @@ class Covariance:
         mat = np.matmul(coord, rotation_matrix)
         effective_lag = pairwise_distances(mat,mat)
         covariance_matrix = Covariance.covar(effective_lag, sill, nug, vtype, s=s)
+        np.fill_diagonal(covariance_matrix, sill)
 
         return covariance_matrix
 
@@ -787,7 +796,8 @@ class Interpolation:
 
                 est_sk[z] = mean_1 + (np.sum(k_weights*(norm_data_val[:] - mean_1))) 
                 var_sk[z] = var_1 - np.sum(k_weights*covariance_array)
-                var_sk[var_sk < 0] = 0
+                if var_sk[z] < 0:
+                    var_sk[z] = 0
             else:
                 est_sk[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
                 var_sk[z] = 0
@@ -879,7 +889,8 @@ class Interpolation:
                 
                 est_ok[z] = local_mean + np.sum(k_weights[0:new_num_pts]*(norm_data_val[:] - local_mean)) 
                 var_ok[z] = var_1 - np.sum(k_weights[0:new_num_pts]*covariance_array[0:new_num_pts])
-                var_ok[var_ok < 0] = 0
+                if var_ok[z] < 0:
+                    var_ok[z] = 0
             else:
                 est_ok[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
                 var_ok[z] = 0   
@@ -948,7 +959,7 @@ class Interpolation:
         for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True, disable=quiet)):
             z = xyindex[idx] 
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values, axis=1)
-            if np.sum(test_idx==2)==0: 
+            if np.sum(test_idx==2)==0 or vario[1] > 0: 
                 
                 # get nearest neighbors
                 nearest = NearestNeighbor.nearest_neighbor_search(radius, num_points, 
@@ -1044,7 +1055,7 @@ class Interpolation:
         for idx, predxy in enumerate(tqdm(prediction_grid, position=0, leave=True, disable=quiet)):
             z = xyindex[idx] 
             test_idx = np.sum(prediction_grid[z]==df[['X', 'Y']].values,axis = 1)
-            if np.sum(test_idx==2)==0:
+            if np.sum(test_idx==2)==0 or vario[1] > 0:
                 
                 # gather nearest neighbor points
                 nearest = NearestNeighbor.nearest_neighbor_search(radius, num_points, 
