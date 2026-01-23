@@ -6,6 +6,19 @@
 
 </p>
 
+# GStatSim Office Hours
+
+Drop in with quetions, debugging help, or ideas.
+
+Upcoming sessions:
+- February 10 - 10-11 AM EST
+- March 5 - TBD
+- April 14 - 4-5 PM EST
+
+Registration link: https://ufl.zoom.us/meeting/register/3A-x8K3CSmSmPYfCeIfDlA 
+
+Check back for future office hours postings!
+
 # GStatSim
 GStatSim is a Python package specifically designed for geostatistical interpolation and simulation. It is inspired by open source geostatistical resources such as GeostatsPy and SciKit-GStat. The functions are intended to address the challenges of working with large data sets, non-linear trends, variability in measurement density, and non-stationarity. These tools are part of our ongoing effort to develop and adapt open-access geostatistical functions.
 
