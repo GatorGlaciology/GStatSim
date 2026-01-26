@@ -12,7 +12,7 @@ Drop in with quetions, debugging help, or ideas.
 
 Upcoming sessions:
 - February 10 - 10-11 AM EST
-- March 5 - TBD
+- March 27 - 3-4 PM EST
 - April 14 - 4-5 PM EST
 
 Registration link: https://ufl.zoom.us/meeting/register/3A-x8K3CSmSmPYfCeIfDlA 
