@@ -982,7 +982,7 @@ class Interpolation:
                 est = mean_1 + np.sum(k_weights*(norm_data_val - mean_1)) 
                 var = var_1 - np.sum(k_weights*covariance_array) 
                 var = np.absolute(var) 
-                sgs[z] = rng.normal(est,math.sqrt(var),1) 
+                sgs[z] = rng.normal(est,math.sqrt(var)) 
             else:
                 sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
                 continue
@@ -1087,7 +1087,7 @@ class Interpolation:
                 var = var_1 - np.sum(k_weights[0:new_num_pts]*covariance_array[0:new_num_pts]) 
                 var = np.absolute(var)
 
-                sgs[z] = rng.normal(est,math.sqrt(var),1) 
+                sgs[z] = rng.normal(est,math.sqrt(var)) 
             else:
                 sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
                 continue
@@ -1192,7 +1192,7 @@ class Interpolation:
                 var = var_1 - np.sum(k_weights*covariance_array)
                 var = np.absolute(var) 
 
-                sgs[z] = rng.normal(est,math.sqrt(var),1)
+                sgs[z] = rng.normal(est,math.sqrt(var))
             else:
                 sgs[z] = df['Z'].values[np.where(test_idx==2)[0][0]]
                 cluster_number = df['K'].values[np.where(test_idx==2)[0][0]]
@@ -1461,7 +1461,7 @@ class Interpolation:
                 var_cokrige = var_1 - np.sum(k_weights*covariance_array)
                 var_cokrige = np.absolute(var_cokrige) 
 
-                cosim[z] = rng.normal(est_cokrige,math.sqrt(var_cokrige),1)
+                cosim[z] = rng.normal(est_cokrige,math.sqrt(var_cokrige))
             else:
                 cosim[z] = df1['Z'].values[np.where(test_idx==2)[0][0]]
                 continue
