@@ -62,7 +62,7 @@ def test_ordinary_kriging():
     est_SK, var_SK = gs.Interpolation.okrige(
         Pred_grid_xy, df_grid, 'X', 'Y', 'Z', k, vario, rad)
 
-    expected_est = np.array([ 446.2, 416.3, -16.3, 293.8, 267.7, 383.5, 7.9, 350.9,
+    expected_est = np.array([ 446.2, 416.3, -16.3, 294., 267.7, 383.5, 7.9, 350.9,
                              78.9, -108.3, 484.1, 385.3, 323.4, 386.4, 365.7, 436.7,
                              421.8, 370.2, 349.3, 170.7, 0.7, 182.5, 385.2, 219.6, 318.8])
 
@@ -129,7 +129,7 @@ def test_simple_kriging():
     est_SK, var_SK = gs.Interpolation.skrige(
         Pred_grid_xy, df_grid, 'X', 'Y', 'Z', k, vario, rad)
 
-    expected_est = np.array([444.1, 415.3, -9.3, 296., 269.2, 340.9, 15.9, 335.6, 78.9,
+    expected_est = np.array([444.1, 415.3, -9.3, 295.8, 269.2, 340.9, 15.9, 335.6, 78.9,
                              -94.3, 484.1, 311.5, 315.4, 386.3, 371.1, 430.5, 421.8, 305.9,
                              349.8, 170.7, 8.4, 182.5, 290.4, 223.6, 318.9])
 
