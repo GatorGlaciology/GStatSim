@@ -1,6 +1,6 @@
 from setuptools import setup
 
-version = '1.2.0'
+version = '1.2.1'
 
 classifiers = [
     'Programming Language :: Python :: 3',
@@ -10,7 +10,7 @@ classifiers = [
 ]
 
 dependencies = [
-    'numpy>=1.14.5',
+    'numpy>=2',
     'pandas>=1.1.1',
     'scipy>=1.1.1',
     'tqdm>=3',
@@ -32,6 +32,6 @@ setup(
     license = 'MIT',
     classifiers = classifiers,
     py_modules = ['gstatsim'],
-    python_requires = '>=3',
+    python_requires = '>=3.9',
     install_requires = dependencies,
 )
