@@ -205,11 +205,9 @@ def rbf_trend(grid_matrix, smooth_factor, res):
                np.where(~np.isnan(grid_matrix))[0], 
                grid_matrix[~np.isnan(grid_matrix)],smooth = sigma)
 
-    # evaluate RBF
-    yi = np.arange(nx)
-    xi = np.arange(ny)
-    xi,yi = np.meshgrid(xi, yi)
-    trend_rbf = rbfi(xi, yi)   
+    # evaluate RBF at every cell (x = column, y = row, as in the fit)
+    xi, yi = np.meshgrid(np.arange(nx), np.arange(ny))
+    trend_rbf = rbfi(xi, yi)
     
     return trend_rbf
 
