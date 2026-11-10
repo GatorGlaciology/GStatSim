@@ -284,6 +284,25 @@ def test_sequential_gaussian_simulation_simple_kriging():
     np.testing.assert_array_almost_equal(sim, expected_sim, decimal=1)
 
 
+@pytest.mark.parametrize('shape', [(15, 15), (12, 20), (20, 12)])
+def test_rbf_trend_shape_and_orientation(shape):
+    """
+    rbf_trend returns the trend on the input grid, also for non-square grids.
+    The data rise from west to east (along columns), so the trend must too.
+
+    """
+    ny, nx = shape
+    rng = np.random.default_rng(0)
+    grid = np.tile(np.arange(nx, dtype=float) * 10, (ny, 1))
+    grid[rng.random(shape) < 0.5] = np.nan   # data on about half the cells
+
+    trend = gs.rbf_trend(grid, smooth_factor=1000, res=1000)
+
+    assert trend.shape == grid.shape
+    assert np.all(np.diff(trend, axis=1) > 0)
+    assert np.ptp(trend, axis=0).max() < 0.1 * np.ptp(trend)   # ~flat north to south (smoothing bends the edges)
+
+
 if __name__ == '__main__':
     import pytest
     pytest.main()
