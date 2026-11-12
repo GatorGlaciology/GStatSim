@@ -300,6 +300,49 @@ def test_no_neighbors_raises(xp):
         batched_krige(xp, np.array([[1e6, 1e6]]), df, VARIOS[0], 8, 1000, False)
 
 
+@pytest.fixture(scope="module")
+def near_singular():
+    """GStatSim demo 5's situation: a Gaussian variogram with no nugget and
+    a range much longer than the point spacing gives covariance matrices that
+    are singular to machine precision."""
+    rng = np.random.default_rng(0)
+    x, y = rng.random(100) * 100, rng.random(100) * 100
+    df = pd.DataFrame({"X": x, "Y": y, "Z": np.sin(x / 15) + np.cos(y / 20)})
+    g = np.arange(0, 100, 10.0)
+    gx, gy = np.meshgrid(g, g)
+    pts = np.column_stack([gx.ravel(), gy.ravel()]) + 0.5
+    return df, pts, [0, 0.0, 32.0, 32.0, 2.7, "Gaussian"]
+
+
+@pytest.mark.parametrize("xp", XPS)
+@pytest.mark.parametrize("ordinary", [False, True], ids=["SK", "OK"])
+def test_near_singular_kriging_matches_gstatsim(xp, ordinary, near_singular):
+    """Nearly singular systems are solved by least squares, as in GStatSim."""
+    df, pts, vario = near_singular
+    f = gs.Interpolation.okrige if ordinary else gs.Interpolation.skrige
+    ref_est, ref_var = f(pts, df.copy(), "X", "Y", "Z", 128, vario, 100, quiet=True)
+    est, var = batched_krige(xp, pts, df, vario, 128, 100, ordinary)
+    np.testing.assert_allclose(est, ref_est, rtol=0, atol=1e-6)
+    np.testing.assert_allclose(var, np.where(ref_var < 0, 0, ref_var), rtol=0, atol=1e-6)
+
+
+@pytest.mark.parametrize("impl", SGS_IMPLS)
+def test_near_singular_sgs_raises(impl, near_singular):
+    """GPU SGS can't switch to least squares mid-simulation, so it must refuse
+    rather than return large, meaningless values."""
+    df, _, vario = near_singular
+    g = np.arange(0, 30, 1.0)  # demo 5's 1-unit grid: simulated nodes this close make it singular
+    gx, gy = np.meshgrid(g, g)
+    pts = np.column_stack([gx.ravel(), gy.ravel()])
+    args = (pts, df.X.to_numpy(), df.Y.to_numpy(), df.Z.to_numpy(), vario, 48, 50, True, [0],
+            float(df.Z.mean()))
+    with pytest.raises(FloatingPointError, match="backend='cpu'"):
+        if impl == "cuda":
+            gsg._kernel_sgs_ensemble(*args)
+        else:
+            gsg._xp_sgs_ensemble(impl, *args)
+
+
 @needs_gpu
 @pytest.mark.parametrize("method", ["simple", "ordinary"])
 def test_predict_gpu_matches_cpu(method, scattered):
@@ -399,6 +442,23 @@ def test_sgs_ensemble_rows_match_gstatsim_per_seed(impl, field):
     ens = sgs_ensemble(impl, df, pts, vario, "simple", seeds)
     for row, seed in zip(ens, seeds):
         np.testing.assert_allclose(row, sgs_cpu(df, pts, vario, seed=seed), rtol=0, atol=1e-6)
+
+
+@pytest.mark.parametrize("impl", SGS_IMPLS)
+def test_shared_generator_follows_gstatsim(impl, field):
+    """The demos pass one Generator to several SGS calls; each call must
+    continue the stream exactly where GStatSim's would. Nodes on data draw
+    no random number, so some are included."""
+    df, pts = field
+    pts = pts.copy()
+    pts[:3] = df[["X", "Y"]].to_numpy()[:3]
+    vario = [20, 0.0, 6000.0, 3000.0, 1.0, "Exponential"]
+    ours, theirs = np.random.default_rng(9), np.random.default_rng(9)
+    ens = sgs_ensemble(impl, df, pts, vario, "simple", [ours, ours])
+    for row in ens:
+        ref = gs.Interpolation.skrige_sgs(pts, df.copy(), "X", "Y", "Z", 16, vario, 8000, seed=theirs, quiet=True)
+        np.testing.assert_allclose(row, ref, rtol=0, atol=1e-6)
+    assert ours.random() == theirs.random()  # both generators end in the same state
 
 
 @pytest.mark.parametrize("impl", SGS_IMPLS)

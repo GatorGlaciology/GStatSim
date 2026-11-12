@@ -223,18 +223,31 @@ def _is_int(v) -> bool:
     return isinstance(v, numbers.Integral) and not isinstance(v, bool)
 
 
+def _is_seed(v) -> bool:
+    return _is_int(v) or isinstance(v, np.random.Generator)
+
+
+def _gs_seed(v):
+    """A seed in the form gstatsim.get_random_generator accepts (it wants a Python int)."""
+    return int(v) if _is_int(v) else v
+
+
 def _seed_list(seed, seeds) -> tuple:
-    """Validate seed (one realization) or seeds (several); returns (several?, seed list)."""
+    """Validate seed (one realization) or seeds (several); returns (several?, seed list).
+
+    A seed is an integer, a NumPy Generator, or None, as in GStatSim. A
+    Generator is used exactly as GStatSim uses it, so passing the same one to
+    several calls (or several times in seeds) gives GStatSim's sequence."""
     if seeds is not None and seed is not None:
         raise ValueError("pass either seed or seeds, not both")
     if seeds is None:
-        if seed is not None and not _is_int(seed):
-            raise ValueError(f"seed must be an integer or None, got {seed!r}")
-        return False, [seed]
+        if seed is not None and not _is_seed(seed):
+            raise ValueError(f"seed must be an integer, a NumPy Generator or None, got {seed!r}")
+        return False, [_gs_seed(seed)]
     seeds = list(seeds)
-    if not seeds or not all(_is_int(v) for v in seeds):
-        raise ValueError("seeds must be a non-empty list of integers")
-    return True, seeds
+    if not seeds or not all(_is_seed(v) for v in seeds):
+        raise ValueError("seeds must be a non-empty list of integers or NumPy Generators")
+    return True, [_gs_seed(v) for v in seeds]
 
 
 def _no_matern_on_gpu(vario):
@@ -372,15 +385,50 @@ def _kriging_systems(xp, valid, nx, ny, px, py, vario, R, ordinary):
     return A, b
 
 
-def _solve(xp, A, b, valid, ordinary):
-    """Batched solve; systems that come out singular are redone with lstsq
-    on the CPU, as GStatSim does for every system."""
+# A covariance matrix whose smallest Cholesky pivot (squared) is below this
+# fraction of the sill is treated as numerically singular. A Gaussian
+# variogram with no nugget on closely spaced points does this. GStatSim solves
+# every system with lstsq, which copes with near-singular matrices; LU or
+# Cholesky would return large, meaningless weights instead.
+_SINGULAR = 1e-10
+
+
+_SINGULAR_SGS_MESSAGE = (
+    "Some kriging systems are numerically singular (for example a Gaussian variogram with no nugget "
+    "on closely spaced points). GStatSim solves these by least squares, which GPU SGS can't do "
+    "mid-simulation. Use backend='cpu' for this simulation, or add a small nugget.")
+
+
+def _nearly_singular(xp, C, sill):
+    """Rows of the batch of covariance matrices C that are numerically singular."""
+    def one(Ci):
+        try:
+            return float(np.min(np.diag(np.linalg.cholesky(Ci)) ** 2)) <= _SINGULAR * sill
+        except np.linalg.LinAlgError:
+            return True
+
+    if xp is np:
+        try:
+            L = np.linalg.cholesky(C)
+        except np.linalg.LinAlgError:  # NumPy raises if any matrix in the batch fails
+            return np.array([one(Ci) for Ci in C], dtype=bool)
+    else:
+        L = xp.linalg.cholesky(C)  # CuPy marks a failed matrix with NaN
+    piv = xp.diagonal(L, axis1=1, axis2=2)
+    return ~(xp.isfinite(piv).all(axis=1) & ((piv * piv).min(axis=1) > _SINGULAR * sill))
+
+
+def _solve(xp, A, b, valid, ordinary, sill):
+    """Batched solve. Systems that are singular or nearly so are redone with
+    lstsq on the CPU, exactly as GStatSim solves every system."""
     try:
         w = xp.linalg.solve(A, b[..., None])[..., 0]
         bad = ~xp.isfinite(w).all(axis=1)
     except np.linalg.LinAlgError:  # NumPy raises; CuPy returns NaN instead
         w = xp.zeros_like(b)
         bad = xp.ones(len(b), dtype=bool)
+    K = valid.shape[1]
+    bad |= _nearly_singular(xp, A[:, :K, :K], sill)
     if bad.any():
         for i in _to_numpy(xp, xp.nonzero(bad)[0]):
             keep = np.append(_to_numpy(xp, valid[i]), True) if ordinary else _to_numpy(xp, valid[i])
@@ -443,7 +491,7 @@ def _batched_krige(xp, points, X, Y, Z, vario, num_points, radius, ordinary, glo
 
         j = xp.where(valid, nbr, 0)
         A, b = _kriging_systems(xp, valid, Xs[j], Ys[j], px, py, vario, R, ordinary)
-        w = _solve(xp, A, b, valid, ordinary)
+        w = _solve(xp, A, b, valid, ordinary, float(vario[4]))
         z = Zs[j]
         e, v = _estimate(xp, w, b, z, valid, vario, ordinary, global_mean)
 
@@ -519,7 +567,7 @@ def _batched_cokrige_mm1(xp, points, X1, Y1, Z1, X2, Y2, Z2, vario, num_points, 
         C[:, :, K] *= rho
         C[:, K, K] = 1.0
         c0[:, K] *= rho
-        w = _solve(xp, C, c0, vall, ordinary=False)
+        w = _solve(xp, C, c0, vall, ordinary=False, sill=var_1)
 
         z = Zs[j]
         e = (mean_1 + xp.sum(w[:, :K] * (z - mean_1) / np.sqrt(var_1) * valid, axis=1)
@@ -569,10 +617,12 @@ def _paths_and_draws(points, X, Y, seeds, copy_datum):
         rng = gs.get_random_generator(seed)
         path = np.arange(M)
         rng.shuffle(path)
-        draws = rng.standard_normal(M)
         simulated = datum_of[path] < 0
+        # One normal per simulated node, like GStatSim's rng.normal calls. Nodes
+        # that copy a datum draw nothing, so a shared Generator ends in the
+        # same state as after GStatSim.
         node[s] = path
-        eps[s, simulated] = draws[:simulated.sum()]
+        eps[s, simulated] = rng.standard_normal(int(simulated.sum()))
     return node, datum_of[node], eps
 
 
@@ -634,6 +684,7 @@ def _xp_sgs_ensemble(xp, points, X, Y, Z, vario, num_points, radius, ordinary, s
     out = xp.empty((S, M))
     rows = xp.arange(S)
     no_neighbors = xp.zeros((), dtype=bool)
+    singular = xp.zeros((), dtype=bool)
 
     for i in range(M):
         n = N + i
@@ -652,6 +703,8 @@ def _xp_sgs_ensemble(xp, points, X, Y, Z, vario, num_points, radius, ordinary, s
 
         on_datum = datum_d[:, i] >= 0
         no_neighbors |= (~valid.any(axis=1) & ~on_datum).any()
+        K = valid.shape[1]
+        singular |= (_nearly_singular(xp, A[:, :K, :K], float(vario[4])) & ~on_datum).any()
         value = xp.where(on_datum, Zdata[xp.maximum(datum_d[:, i], 0)], value)
         out[rows, node_d[:, i]] = value
         Xa[:, n] = xp.where(on_datum, xp.nan, px)
@@ -661,9 +714,11 @@ def _xp_sgs_ensemble(xp, points, X, Y, Z, vario, num_points, radius, ordinary, s
     # Checked once at the end; checking per step would stall the GPU every step.
     if bool(no_neighbors):
         raise ValueError("Unable to find nearest neighbors for some nodes. Try increasing the search radius.")
+    if bool(singular):
+        raise FloatingPointError(_SINGULAR_SGS_MESSAGE)
     result = _to_numpy(xp, out)
     if not np.all(np.isfinite(result)):
-        raise FloatingPointError("SGS produced non-finite values (singular kriging system)")
+        raise FloatingPointError(_SINGULAR_SGS_MESSAGE)
     return result
 
 
@@ -685,6 +740,7 @@ _KERNEL_VTYPES = {"exponential": 0, "gaussian": 1, "spherical": 2}
 
 _SOURCE = r"""
 #define MAXK __MAXK__
+#define SINGULAR __SINGULAR__
 #define INF (__longlong_as_double(0x7ff0000000000000ULL))
 
 __constant__ double EDGES[9];
@@ -862,7 +918,7 @@ extern "C" __global__ void sgs_kernel(
             if (k > 0) {                                   // finish column k-1
                 const int kk1 = (k - 1) * k / 2 + (k - 1);
                 double p1 = A[kk1];
-                if (p1 <= 0.0) { if (tid == 0) bad_sh = 1; p1 = 1.0; }
+                if (p1 <= SINGULAR * sill) { if (tid == 0) bad_sh = 1; if (p1 <= 0.0) p1 = 1.0; }
                 const double piv = sqrt(p1);
                 for (int a = k + tid; a < mt; a += bs) A[a * (a + 1) / 2 + k - 1] /= piv;
                 if (tid == 0) A[kk1] = piv;
@@ -947,7 +1003,7 @@ extern "C" __global__ void sgs_kernel(
 def _kernel(maxk: int):
     import cupy as cp
 
-    module = cp.RawModule(code=_SOURCE.replace("__MAXK__", str(maxk)),
+    module = cp.RawModule(code=_SOURCE.replace("__MAXK__", str(maxk)).replace("__SINGULAR__", repr(_SINGULAR)),
                           # No fused multiply-add, so distances round exactly like NumPy's.
                           options=("--fmad=false", "-std=c++17"))
     edges = cp.ndarray((9,), cp.float64, module.get_global("EDGES"))
@@ -1018,7 +1074,7 @@ def _kernel_run(points, X, Y, Z, labels, varios, num_points, radius, ordinary, s
     if f & 1:
         raise ValueError("Unable to find nearest neighbors for some nodes. Try increasing the search radius.")
     if f & 2:
-        raise FloatingPointError("Kriging matrix not positive definite (duplicate points with zero nugget?)")
+        raise FloatingPointError(_SINGULAR_SGS_MESSAGE)
     return out.get()
 
 
@@ -1173,9 +1229,10 @@ def sgs(conditioning_data, prediction_points, variogram, *, num_points, radius, 
     ----------
         conditioning_data, prediction_points, variogram, num_points, radius, method, backend, xx, yy, zz, quiet
             As in predict
-        seed : int or None
-            Same seed and inputs -> same random path and random draws on
-            either backend. Realizations then agree to ~1e-12 except where
+        seed : int, numpy.random.Generator or None
+            As in GStatSim. Same seed and inputs -> same random path and
+            random draws on either backend; a Generator shared between calls
+            advances exactly as it does in GStatSim. Realizations then agree to ~1e-12 except where
             equidistant neighbors tie; a tie changes that node and, through
             it, later nodes, so compare gridded runs as ensembles.
 
@@ -1192,7 +1249,7 @@ def sgs(conditioning_data, prediction_points, variogram, *, num_points, radius, 
     df = _check_conditioning_data(conditioning_data, xx, yy, zz)
     vario = _check_variogram(variogram)
     _check_search(num_points, radius)
-    _seed_list(seed, None)
+    _, (seed,) = _seed_list(seed, None)
     backend = _resolve_backend(backend)
     if len(points) == 0:
         return np.empty(0)
@@ -1220,7 +1277,7 @@ def realizations(conditioning_data, prediction_points, variogram, *, seeds, num_
 
     Parameters
     ----------
-        seeds : list of int
+        seeds : list of int or numpy.random.Generator
             One seed per realization
         conditioning_data, prediction_points, variogram, num_points, radius, method, backend, xx, yy, zz, quiet
             As in predict
