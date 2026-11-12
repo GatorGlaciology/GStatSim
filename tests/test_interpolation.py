@@ -62,12 +62,12 @@ def test_ordinary_kriging():
     est_SK, var_SK = gs.Interpolation.okrige(
         Pred_grid_xy, df_grid, 'X', 'Y', 'Z', k, vario, rad)
 
-    expected_est = np.array([ 446.2, 416.3, -16.3, 294., 267.7, 383.5, 7.9, 350.9,
-                             78.9, -108.3, 484.1, 385.3, 323.4, 386.4, 365.7, 436.7,
+    expected_est = np.array([ 446.2, 416.2, -16.3, 294., 267.7, 383.5, 7.9, 350.9,
+                             78.9, -108.3, 484.1, 385.5, 323.4, 386.4, 365.7, 436.7,
                              421.8, 370.2, 349.3, 170.7, 0.7, 182.5, 385.2, 219.6, 318.8])
 
-    expected_var = np.array([7645.2, 4755.7, 9880.7, 9881.5, 11269.9, 16169.5, 10920.9,
-                             11398.8, 0., 12246., 0., 21342.3, 7936.8, 4780., 11525.4,
+    expected_var = np.array([7645.2, 4755.9, 9880.7, 9881.5, 11269.9, 16169.5, 10920.9,
+                             11398.8, 0., 12246., 0., 21344.1, 7936.8, 4780., 11525.4,
                              11745.7, 3763.3, 19738.4, 4070.6, 0., 8548.9, 3507.8,
                              21654.5, 4748.4, 3767.])
 
@@ -129,12 +129,12 @@ def test_simple_kriging():
     est_SK, var_SK = gs.Interpolation.skrige(
         Pred_grid_xy, df_grid, 'X', 'Y', 'Z', k, vario, rad)
 
-    expected_est = np.array([444.1, 415.3, -9.3, 295.8, 269.2, 340.9, 15.9, 335.6, 78.9,
-                             -94.3, 484.1, 311.5, 315.4, 386.3, 371.1, 430.5, 421.8, 305.9,
+    expected_est = np.array([444.1, 415.1, -9.3, 295.8, 269.2, 340.9, 15.9, 335.6, 78.9,
+                             -94.3, 484.1, 311.2, 315.4, 386.3, 371.1, 430.5, 421.8, 305.9,
                              349.8, 170.7, 8.4, 182.5, 290.4, 223.6, 318.9])
 
     expected_var = np.array([7711.6, 4787.7, 10011.4, 10014.5, 11474.8, 17027.6, 11092.1,
-                             11777.1, 0., 12449.5, 0., 21794.7, 8183.3, 4832.2, 11771.3,
+                             11777.1, 0., 12449.5, 0., 21795.0, 8183.3, 4832.2, 11771.3,
                              11899.5, 3765.1, 20914.3, 4055.8, 0., 8889.6, 3522.3, 22182.6,
                              4797.8, 3740.1])
 
@@ -204,8 +204,8 @@ def test_sequential_gaussian_simulation_ordinary_kriging():
 
     # as we set the numpy random seed, the simulation is deterministic and we can compare to the following (rounded) results
     expected_sim = np.array([444.9, 415.8, -23.7, 301.2, 263.3, 374.9, -6.9, 346.5,
-                             78.9, -106.6, 484.1, 374.8, 321.6, 388.6, 366.8, 440.1,
-                             421.6, 367., 349.6, 170.7, -7.7, 182., 379.8, 221.3, 318.3])
+                             78.9, -106.6, 484.1, 374.8, 321.6, 388.8, 366.8, 440.1,
+                             421.6, 367., 349.6, 170.7, -7.7, 182., 379.9, 221.3, 318.3])
 
     # assert
     np.testing.assert_array_almost_equal(sim, expected_sim, decimal=1)
@@ -276,9 +276,9 @@ def test_sequential_gaussian_simulation_simple_kriging():
         Pred_grid_xy, df_grid, 'X', 'Y', 'Z', k, vario, rad, seed=rng)
 
     # as we set the numpy random seed, the simulation is deterministic and we can compare to the following (rounded) results
-    expected_sim = np.array([445.6, 416.4, -27.6, 300.8, 263.4, 352.5, -7.1, 341.7,
-                             78.9, -110.7, 484.1, 338., 318.1, 388.6, 366.9, 441.4,
-                             421.6, 323., 349.9, 170.7, -4.4, 182., 309.3, 220.7, 318.6])
+    expected_sim = np.array([445.6, 416.4, -27.6, 300.8, 263.4, 352.6, -7.1, 341.7,
+                             78.9, -110.7, 484.1, 338., 318.1, 388.7, 366.9, 441.4,
+                             421.6, 323., 349.9, 170.7, -4.4, 182., 309.5, 220.7, 318.6])
 
     # assert
     np.testing.assert_array_almost_equal(sim, expected_sim, decimal=1)

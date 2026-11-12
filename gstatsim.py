@@ -314,7 +314,7 @@ class NearestNeighbor:
         data["dist"] = NearestNeighbor.distance_calculator(centered_array) 
         data["angles"] = NearestNeighbor.angle_calculator(centered_array)
         data = data[data.dist < radius] 
-        data = data.sort_values('dist', ascending = True)
+        data = data.sort_values('dist', ascending = True, kind = 'mergesort')
         bins = [-math.pi, -3*math.pi/4, -math.pi/2, -math.pi/4, 0, 
                 math.pi/4, math.pi/2, 3*math.pi/4, math.pi+1e-3] 
         data["Oct"] = pd.cut(data.angles, bins = bins, labels = list(range(8)))
@@ -363,7 +363,7 @@ class NearestNeighbor:
         data["dist"] = NearestNeighbor.distance_calculator(centered_array)
         data["angles"] = NearestNeighbor.angle_calculator(centered_array)
         data = data[data.dist < radius] 
-        data = data.sort_values('dist', ascending = True)
+        data = data.sort_values('dist', ascending = True, kind = 'mergesort')
         data = data.reset_index() 
         cluster_number = data.K[0] 
         bins = [-math.pi, -3*math.pi/4, -math.pi/2, -math.pi/4, 0, 
@@ -406,7 +406,7 @@ class NearestNeighbor:
         centered_array = NearestNeighbor.center(data['X'].values, data['Y'].values, 
                                 locx, locy)
         data["dist"] = NearestNeighbor.distance_calculator(centered_array)
-        data = data.sort_values('dist', ascending = True) 
+        data = data.sort_values('dist', ascending = True, kind = 'mergesort')
         data = data.reset_index() 
         nearest_second = data.iloc[0][['X','Y','Z']].values 
         
