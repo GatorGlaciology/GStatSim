@@ -31,7 +31,8 @@ setup(
     url = 'https://github.com/GatorGlaciology/GStatSim',
     license = 'MIT',
     classifiers = classifiers,
-    py_modules = ['gstatsim'],
+    py_modules = ['gstatsim', 'gstatsim_gpu'],
     python_requires = '>=3.9',
     install_requires = dependencies,
+    extras_require = {'gpu': ['cupy-cuda12x']},
 )
