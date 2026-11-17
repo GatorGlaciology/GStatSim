@@ -274,6 +274,22 @@ OCTANT_EDGES = [-math.pi, -3 * math.pi / 4, -math.pi / 2, -math.pi / 4, 0,
 _SEARCH_ELEMS = 2 ** 23
 
 
+def _trim_pool(xp):
+    """Release CuPy's cached blocks once they pass half the device memory.
+
+    Batches differ in shape (the number of nearby data changes from batch to
+    batch), so CuPy's memory pool keeps caching blocks it can't reuse. Left
+    alone, the cache grows by tens of MB per batch until it fills the GPU;
+    on Windows the driver then pages GPU memory to system RAM and kriging a
+    large grid slows from seconds to hours. Called once per batch.
+    """
+    if xp is np:
+        return
+    pool = xp.get_default_memory_pool()
+    if pool.total_bytes() > xp.cuda.Device().mem_info[1] // 2:
+        pool.free_all_blocks()
+
+
 def _to_numpy(xp, a):
     return a.get() if xp is not np else a
 
@@ -501,6 +517,7 @@ def _batched_krige(xp, points, X, Y, Z, vario, num_points, radius, ordinary, glo
         v = xp.where(on_datum, 0.0, v)
         est[start:start + len(p)] = _to_numpy(xp, e)
         var[start:start + len(p)] = _to_numpy(xp, v)
+        _trim_pool(xp)
     return est, var
 
 
@@ -519,6 +536,7 @@ def _nearest_secondary(xp, points, X2, Y2, batch_size=None):
         d2 = dx * dx
         d2 += dy * dy
         out[start:start + len(p)] = _to_numpy(xp, xp.argmin(d2, axis=1))
+        _trim_pool(xp)
     return out
 
 
@@ -578,6 +596,7 @@ def _batched_cokrige_mm1(xp, points, X1, Y1, Z1, X2, Y2, Z2, vario, num_points, 
         v = xp.where(on_datum, 0.0, v)
         est[start:start + len(p)] = _to_numpy(xp, e)
         var[start:start + len(p)] = _to_numpy(xp, v)
+        _trim_pool(xp)
     return est, var
 
 

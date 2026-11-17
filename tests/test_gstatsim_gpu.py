@@ -522,3 +522,31 @@ def test_cosim_mm1_matches_gstatsim_and_leaves_vario_alone(with_secondary):
         np.testing.assert_allclose(row, gsg.cosim_mm1(df1, df2, pts, vario, seed=seed, backend="cpu", **kw),
                                    rtol=0, atol=1e-6)
     assert vario[4] == 1.0  # GStatSim itself would have overwritten the sill
+
+
+def test_trim_pool_frees_cache_past_half_the_device():
+    # Batches differ in shape, so CuPy's pool caches blocks it can't reuse;
+    # _trim_pool must release them before they fill the GPU on big grids.
+    from types import SimpleNamespace
+
+    class Pool:
+        def __init__(self, total):
+            self.total, self.freed = total, False
+
+        def total_bytes(self):
+            return self.total
+
+        def free_all_blocks(self):
+            self.freed = True
+
+    device = SimpleNamespace(mem_info=(0, 1000))
+    for total, expect in ((400, False), (600, True)):
+        pool = Pool(total)
+        fake_cp = SimpleNamespace(get_default_memory_pool=lambda pool=pool: pool,
+                                  cuda=SimpleNamespace(Device=lambda: device))
+        gsg._trim_pool(fake_cp)
+        assert pool.freed is expect
+
+
+def test_trim_pool_is_a_no_op_on_numpy():
+    gsg._trim_pool(np)
